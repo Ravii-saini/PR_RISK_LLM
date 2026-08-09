@@ -393,6 +393,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "pyjwt" },
+    { name = "python-dotenv" },
     { name = "redis" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -410,6 +411,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "pyjwt", specifier = ">=2.13.0" },
+    { name = "python-dotenv", specifier = ">=1.2" },
     { name = "redis", specifier = ">=5.2" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]

@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.28",
     "pyjwt>=2.13.0",
     "cryptography>=50.0.0",
+    "python-dotenv>=1.2",
 ]
 
 [dependency-groups]
@@ -24,3 +25,7 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
