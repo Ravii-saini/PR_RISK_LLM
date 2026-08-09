@@ -1,0 +1,33 @@
+# Environment / secrets
+.env
+*.pem
+*.key
+
+# Personal planning / notes — not for the public repo
+SPEC.md
+PLAN.md
+PREREQUISITES.md
+PROBLEMS.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# uv
+uv.lock.bak
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
