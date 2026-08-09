@@ -11,6 +11,8 @@ dependencies = [
     "uvicorn[standard]>=0.34",
     "redis>=5.2",
     "httpx>=0.28",
+    "pyjwt>=2.13.0",
+    "cryptography>=50.0.0",
 ]
 
 [dependency-groups]
