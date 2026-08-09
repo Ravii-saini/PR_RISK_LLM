@@ -51,14 +51,21 @@ async def github_webhook(
     if x_github_event != "pull_request":
         return {"status": "ignored", "reason": f"event '{x_github_event}' not handled"}
 
-    payload = json.loads(body)
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Malformed JSON body")
+
     action = payload.get("action")
     if action not in PROCESSABLE_ACTIONS:
         return {"status": "ignored", "reason": f"action '{action}' not processed"}
 
-    repo = payload["repository"]["full_name"]
-    pr_number = payload["pull_request"]["number"]
-    head_sha = payload["pull_request"]["head"]["sha"]
+    try:
+        repo = payload["repository"]["full_name"]
+        pr_number = payload["pull_request"]["number"]
+        head_sha = payload["pull_request"]["head"]["sha"]
+    except (KeyError, TypeError):
+        raise HTTPException(status_code=400, detail="Payload missing expected pull_request fields")
 
     # Repo allowlist check (SPEC §5.1) — the App is installed on more than one
     # repo; only the demo-target repo should ever be enqueued for processing.

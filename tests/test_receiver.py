@@ -32,6 +32,28 @@ def test_invalid_signature_rejected(client):
     assert resp.status_code == 401
 
 
+def test_malformed_json_body_rejected(client, settings):
+    """Valid signature over an invalid JSON body must not crash the handler (500)."""
+    body = b"not valid json at all"
+    resp = client.post(
+        "/webhooks/github",
+        content=body,
+        headers=webhook_headers(settings.github_webhook_secret, body),
+    )
+    assert resp.status_code == 400
+
+
+def test_payload_missing_pull_request_fields_rejected(client, settings):
+    """Valid signature + valid JSON, but structurally incomplete, must 400 not 500."""
+    body = json.dumps({"action": "opened", "repository": {"full_name": "octo/demo"}}).encode()
+    resp = client.post(
+        "/webhooks/github",
+        content=body,
+        headers=webhook_headers(settings.github_webhook_secret, body),
+    )
+    assert resp.status_code == 400
+
+
 def test_ping_event_ignored(client, settings):
     body = json.dumps({"zen": "hello"}).encode()
     resp = client.post(
