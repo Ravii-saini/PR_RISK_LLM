@@ -1,0 +1,24 @@
+[project]
+name = "pr-risk-copilot"
+version = "0.1.0"
+description = "Automated PR structural-risk review grounded in codebase retrieval"
+authors = [
+    { name = "Ravii-saini", email = "ravisainijnv@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "redis>=5.2",
+    "httpx>=0.28",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "responses>=0.25",
+]
+
+[tool.uv]
+package = false
