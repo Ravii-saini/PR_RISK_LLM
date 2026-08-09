@@ -7,7 +7,7 @@ Ground truth below was independently verified by reading the actual patch
 text for github.com/psf/requests/pull/7431 before writing these assertions,
 not just accepted from the tool's own output.
 """
-from worker.diff_parser.tree_sitter_python import analyze_pr_diff
+from worker.diff_parser.parser import analyze_pr_diff
 
 PR_OWNER = "psf"
 PR_REPO = "requests"

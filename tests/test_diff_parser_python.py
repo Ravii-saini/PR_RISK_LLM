@@ -1,12 +1,16 @@
-"""Diff parser tests (SPEC §5.3, F2).
+"""Python diff parser tests (SPEC §5.3, F2).
 
 Deliberately includes cases a regex-based function detector breaks on:
 a multi-line function signature where the change lands mid-signature (not
 on the `def` line itself), a decorator, and a nested def — tree-sitter
 handles all of these correctly because it parses a real syntax tree instead
 of matching line patterns.
+
+`parse_patch_changed_lines` is language-agnostic (it only reads unified-diff
+syntax), so its tests live here rather than being duplicated per language.
 """
-from worker.diff_parser.tree_sitter_python import (
+from worker.diff_parser.languages import PYTHON
+from worker.diff_parser.parser import (
     changed_functions,
     find_function_ranges,
     parse_patch_changed_lines,
@@ -65,7 +69,7 @@ def test_parse_patch_changed_lines_multiple_hunks():
 
 
 def test_find_function_ranges_handles_decorator_nested_and_multiline_signature():
-    functions = find_function_ranges(TRICKY_SOURCE)
+    functions = find_function_ranges(TRICKY_SOURCE, PYTHON)
     by_name = {fn["name"]: fn for fn in functions}
 
     assert set(by_name) == {"top_level", "method_one", "method_two", "nested"}
@@ -86,7 +90,7 @@ def test_changed_functions_flags_decorator_only_change():
     # was found broken during adversarial testing and then fixed.
     source = '@app.route("/old")\ndef view():\n    return 1\n'
     patch = '@@ -1,1 +1,1 @@\n-@app.route("/old")\n+@app.route("/new")\n'
-    result = changed_functions(source, patch)
+    result = changed_functions(source, patch, PYTHON)
     assert [fn["name"] for fn in result] == ["view"]
 
 
@@ -95,14 +99,14 @@ def test_changed_functions_flags_only_functions_touched_by_the_diff():
     # its `def` line) must still flag method_one — this is exactly the case
     # a line-pattern-based detector would miss.
     patch = "@@ -12,1 +12,1 @@\n-        a,\n+        a,  # changed\n"
-    result = changed_functions(TRICKY_SOURCE, patch)
+    result = changed_functions(TRICKY_SOURCE, patch, PYTHON)
     assert [fn["name"] for fn in result] == ["method_one"]
 
 
 def test_changed_functions_no_overlap_returns_empty():
     # A change to the module-level import (line 1) touches no function body.
     patch = "@@ -1,1 +1,1 @@\n-import os\n+import os, sys\n"
-    result = changed_functions(TRICKY_SOURCE, patch)
+    result = changed_functions(TRICKY_SOURCE, patch, PYTHON)
     assert result == []
 
 
@@ -111,5 +115,5 @@ def test_changed_functions_handles_brand_new_file():
     # every line on the '+' side — must not off-by-one or crash on this shape.
     source = "def new_func():\n    return 42\n"
     patch = "@@ -0,0 +1,2 @@\n+def new_func():\n+    return 42\n"
-    result = changed_functions(source, patch)
+    result = changed_functions(source, patch, PYTHON)
     assert [fn["name"] for fn in result] == ["new_func"]

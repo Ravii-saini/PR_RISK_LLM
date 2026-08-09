@@ -8,6 +8,7 @@ import httpx
 import jwt
 
 GITHUB_API = "https://api.github.com"
+_TIMEOUT = httpx.Timeout(15.0)
 
 
 def make_app_jwt(app_id: str, private_key: str) -> str:
@@ -28,6 +29,7 @@ def get_installation_id(app_id: str, private_key: str, owner: str, repo: str) ->
     resp = httpx.get(
         f"{GITHUB_API}/repos/{owner}/{repo}/installation",
         headers=_app_headers(app_id, private_key),
+        timeout=_TIMEOUT,
     )
     resp.raise_for_status()
     return resp.json()["id"]
@@ -37,6 +39,7 @@ def get_installation_token(app_id: str, private_key: str, installation_id: int) 
     resp = httpx.post(
         f"{GITHUB_API}/app/installations/{installation_id}/access_tokens",
         headers=_app_headers(app_id, private_key),
+        timeout=_TIMEOUT,
     )
     resp.raise_for_status()
     return resp.json()["token"]
@@ -58,7 +61,7 @@ def fetch_pr_files(owner: str, repo: str, pr_number: int, token: str | None = No
     files: list[dict] = []
     url = f"{GITHUB_API}/repos/{owner}/{repo}/pulls/{pr_number}/files"
     params = {"per_page": 100}
-    with httpx.Client() as client:
+    with httpx.Client(timeout=_TIMEOUT) as client:
         while url:
             resp = client.get(url, headers=headers, params=params)
             resp.raise_for_status()
@@ -74,6 +77,7 @@ def fetch_file_content(owner: str, repo: str, path: str, ref: str, token: str | 
         f"{GITHUB_API}/repos/{owner}/{repo}/contents/{path}",
         headers=_auth_headers(token),
         params={"ref": ref},
+        timeout=_TIMEOUT,
     )
     resp.raise_for_status()
     data = resp.json()
