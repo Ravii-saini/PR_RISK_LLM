@@ -5,6 +5,8 @@ Public repo, long-merged/immutable, deterministic despite being live.
 Ground truth independently verified by reading the actual patch text for
 github.com/google/gson/pull/3076 before writing these assertions.
 """
+import pytest
+
 from worker.diff_parser.parser import analyze_pr_diff
 
 PR_OWNER = "google"
@@ -13,6 +15,7 @@ PR_NUMBER = 3076
 PR_HEAD_SHA = "66a83419bf6ddbdf2414a93380de314614e311cb"
 
 
+@pytest.mark.network
 def test_real_java_pr_diff_reports_correct_changed_methods():
     result = analyze_pr_diff(PR_OWNER, PR_REPO, PR_NUMBER, PR_HEAD_SHA)
     by_file = {r["file"]: r["functions"] for r in result}

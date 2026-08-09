@@ -7,6 +7,8 @@ Ground truth below was independently verified by reading the actual patch
 text for github.com/psf/requests/pull/7431 before writing these assertions,
 not just accepted from the tool's own output.
 """
+import pytest
+
 from worker.diff_parser.parser import analyze_pr_diff
 
 PR_OWNER = "psf"
@@ -15,6 +17,7 @@ PR_NUMBER = 7431
 PR_HEAD_SHA = "0a074cadfaccfbdd2f841d567a4c1a9132a72cd4"
 
 
+@pytest.mark.network
 def test_real_multi_file_pr_diff_reports_correct_changed_functions():
     result = analyze_pr_diff(PR_OWNER, PR_REPO, PR_NUMBER, PR_HEAD_SHA)
     by_file = {r["file"]: r["functions"] for r in result}

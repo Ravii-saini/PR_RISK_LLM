@@ -125,8 +125,13 @@ ollama pull qwen2.5-coder:1.5b
 cp .env.example .env
 # fill in GITHUB_APP_ID, GITHUB_WEBHOOK_SECRET, GEMINI_API_KEY, etc.
 
-# 5. Run the tests
+# 5. Run the tests (fast suite — no network calls, safe to run repeatedly)
 uv run pytest -v
+
+# ...or include the real-historical-PR live tests too (hits the GitHub API,
+# subject to its 60/hr unauthenticated rate limit — run deliberately, not
+# on every iteration)
+uv run pytest -m network -v
 
 # 6. Run the webhook receiver
 uv run uvicorn receiver.main:app --port 8000
@@ -145,6 +150,12 @@ npx smee-client --url <your-smee-channel> --target http://127.0.0.1:8000/webhook
 Tests in this repo hit real infrastructure where it matters, rather than
 mocking everything: the webhook/dedup/debounce tests run against an actual
 Redis instance (a dedicated test DB, not mocked), and the diff parser is
-verified against real historical PRs pulled live from GitHub, with ground
-truth independently checked by reading the actual patch text before writing
-assertions — not just trusting the tool's own first output.
+verified against real historical PRs pulled live from GitHub — in
+`psf/requests`, `gin-gonic/gin`, `google/gson`, and `nestjs/nest` — with
+ground truth independently checked by reading the actual patch text before
+writing assertions, not just trusting the tool's own first output.
+
+The 4 real-PR tests are marked `network` and excluded from the default test
+run, since repeatedly hitting them during normal iteration exhausts
+GitHub's unauthenticated rate limit (60 requests/hour) fast. Run
+`uv run pytest -m network` to include them deliberately.

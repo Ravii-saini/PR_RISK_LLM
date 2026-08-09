@@ -35,3 +35,7 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "-m 'not network'"
+markers = [
+    "network: hits real external APIs (GitHub) — excluded from the default run since repeated runs exhaust GitHub's 60/hr unauthenticated rate limit; run explicitly with `-m network`",
+]

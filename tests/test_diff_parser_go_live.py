@@ -5,6 +5,8 @@ a live network call.
 Ground truth independently verified by reading the actual patch text for
 github.com/gin-gonic/gin/pull/4145 before writing these assertions.
 """
+import pytest
+
 from worker.diff_parser.parser import analyze_pr_diff
 
 PR_OWNER = "gin-gonic"
@@ -13,6 +15,7 @@ PR_NUMBER = 4145
 PR_HEAD_SHA = "db50ea7b54394e7ba9ceb83d7c799accdd9387b1"
 
 
+@pytest.mark.network
 def test_real_go_pr_diff_reports_correct_changed_functions():
     result = analyze_pr_diff(PR_OWNER, PR_REPO, PR_NUMBER, PR_HEAD_SHA)
     by_file = {r["file"]: r["functions"] for r in result}

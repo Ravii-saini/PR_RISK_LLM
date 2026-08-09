@@ -5,6 +5,8 @@ Public repo, long-merged/immutable, deterministic despite being live.
 Ground truth independently verified by reading the actual patch text for
 github.com/nestjs/nest/pull/17028 before writing these assertions.
 """
+import pytest
+
 from worker.diff_parser.parser import analyze_pr_diff
 
 PR_OWNER = "nestjs"
@@ -13,6 +15,7 @@ PR_NUMBER = 17028
 PR_HEAD_SHA = "4063cdb5d75ad68a4780f66fe0bfb7ce7bd4b55a"
 
 
+@pytest.mark.network
 def test_real_ts_pr_diff_reports_correct_changed_functions():
     result = analyze_pr_diff(PR_OWNER, PR_REPO, PR_NUMBER, PR_HEAD_SHA)
     by_file = {r["file"]: r["functions"] for r in result}
