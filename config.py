@@ -18,6 +18,12 @@ class Settings:
     embedding_model: str
     reindex_repos: tuple[str, ...]
     reindex_interval_minutes: int
+    github_app_id: str
+    github_app_private_key_path: str
+    ollama_host: str
+    ollama_model: str
+    gemini_api_key: str
+    gemini_model: str
     stream_name: str = "pr_events"
 
 
@@ -38,4 +44,12 @@ def get_settings() -> Settings:
             r.strip() for r in os.environ.get("REINDEX_REPOS", "psf/requests").split(",") if r.strip()
         ),
         reindex_interval_minutes=int(os.environ.get("REINDEX_INTERVAL_MINUTES", "15")),
+        github_app_id=os.environ.get("GITHUB_APP_ID", ""),
+        github_app_private_key_path=os.environ.get(
+            "GITHUB_APP_PRIVATE_KEY_PATH", "./secrets/github-app-private-key.pem"
+        ),
+        ollama_host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
+        ollama_model=os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:1.5b"),
+        gemini_api_key=os.environ.get("GEMINI_API_KEY", ""),
+        gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite"),
     )

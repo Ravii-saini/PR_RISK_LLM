@@ -13,9 +13,27 @@ import sys
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from config import get_settings
+from worker.github_client import get_installation_token_for_repo
 from worker.retrieval.indexer import index_repo
 
 logger = logging.getLogger(__name__)
+
+
+def _token_for_repo(settings, owner: str, name: str) -> str | None:
+    """Best-effort: authenticate as the GitHub App's installation on this
+    repo if it's installed there (raises the API rate limit from 60/hr to
+    5000/hr — matters for the demo-target repo, which sees every file
+    fetched on every full/incremental index). Falls back to unauthenticated
+    access for repos without the App installed (e.g. the public eval repo).
+    """
+    if not settings.github_app_id:
+        return None
+    try:
+        with open(settings.github_app_private_key_path) as f:
+            private_key = f.read()
+    except OSError:
+        return None
+    return get_installation_token_for_repo(settings.github_app_id, private_key, owner, name)
 
 
 def run_once(force_full: bool = False) -> list[dict]:
@@ -30,12 +48,14 @@ def run_once(force_full: bool = False) -> list[dict]:
     for repo in settings.reindex_repos:
         owner, name = repo.split("/", 1)
         try:
+            token = _token_for_repo(settings, owner, name)
             result = index_repo(
                 repo=repo,
                 owner=owner,
                 name=name,
                 database_url=settings.database_url,
                 embedding_model=settings.embedding_model,
+                token=token,
                 force_full=force_full,
             )
             logger.info("Reindexed %s: %s", repo, result)

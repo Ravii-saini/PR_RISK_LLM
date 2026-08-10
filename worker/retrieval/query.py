@@ -40,6 +40,7 @@ class RetrievalResult:
     has_tests: bool = False
     incident_tags: list[dict] = field(default_factory=list)
     similar: list[SimilarFunction] = field(default_factory=list)
+    code: str = ""
 
 
 def retrieve_context_for_function(
@@ -102,6 +103,7 @@ def retrieve_context_for_function(
         has_tests=own[1] if own else False,
         incident_tags=own[2] if own else [],
         similar=similar,
+        code=code,
     )
 
 

@@ -14,16 +14,22 @@ V1_FILES = {
 
 
 def _patch_repo_state(monkeypatch, head_sha, tree_paths, files, changed_files=None):
-    monkeypatch.setattr(indexer, "get_default_branch_head_sha", lambda owner, name: head_sha)
-    monkeypatch.setattr(indexer, "list_repo_tree", lambda owner, name, sha: tree_paths)
+    monkeypatch.setattr(
+        indexer, "get_default_branch_head_sha", lambda owner, name, token=None: head_sha
+    )
+    monkeypatch.setattr(
+        indexer, "list_repo_tree", lambda owner, name, sha, token=None: tree_paths
+    )
     monkeypatch.setattr(
         indexer,
         "fetch_file_content",
-        lambda owner, name, path, ref: files[path],
+        lambda owner, name, path, ref, token=None: files[path],
     )
     if changed_files is not None:
         monkeypatch.setattr(
-            indexer, "get_changed_files_between", lambda owner, name, base, head: changed_files
+            indexer,
+            "get_changed_files_between",
+            lambda owner, name, base, head, token=None: changed_files,
         )
 
 

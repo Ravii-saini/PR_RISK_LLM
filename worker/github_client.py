@@ -45,6 +45,22 @@ def get_installation_token(app_id: str, private_key: str, installation_id: int) 
     return resp.json()["token"]
 
 
+def get_installation_token_for_repo(app_id: str, private_key: str, owner: str, repo: str) -> str | None:
+    """Best-effort authenticated access: returns an installation token if
+    the GitHub App is installed on this repo, else None so the caller
+    falls back to unauthenticated access. Not every repo this project
+    touches has the App installed — e.g. the public eval-target repo
+    (SPEC: "read-only access, no GitHub App install needed for this").
+    """
+    try:
+        installation_id = get_installation_id(app_id, private_key, owner, repo)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            return None
+        raise
+    return get_installation_token(app_id, private_key, installation_id)
+
+
 def _auth_headers(token: str | None) -> dict:
     headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
     if token:
@@ -127,6 +143,75 @@ def get_changed_files_between(
     )
     resp.raise_for_status()
     return resp.json().get("files", [])
+
+
+def list_issue_comments(owner: str, repo: str, pr_number: int, token: str | None = None) -> list[dict]:
+    """PRs are issues under the hood on GitHub's API, so comments are listed
+    via the issues endpoint. Follows pagination — a long-lived PR can
+    accumulate more than one page of human + bot comments.
+    """
+    headers = _auth_headers(token)
+    comments: list[dict] = []
+    url = f"{GITHUB_API}/repos/{owner}/{repo}/issues/{pr_number}/comments"
+    params = {"per_page": 100}
+    with httpx.Client(timeout=_TIMEOUT) as client:
+        while url:
+            resp = client.get(url, headers=headers, params=params)
+            resp.raise_for_status()
+            comments.extend(resp.json())
+            url = resp.links.get("next", {}).get("url")
+            params = None
+    return comments
+
+
+def find_comment_with_marker(
+    owner: str, repo: str, pr_number: int, marker: str, token: str | None = None
+) -> dict | None:
+    """Find this bot's own prior comment on a PR (SPEC §5.6: "on
+    synchronize, update or replace the previous comment rather than
+    stacking a new one"), identified by a hidden marker string at the top
+    of the comment body. Returns None if no such comment exists yet.
+    """
+    for comment in list_issue_comments(owner, repo, pr_number, token=token):
+        if comment["body"].startswith(marker):
+            return comment
+    return None
+
+
+def create_comment(owner: str, repo: str, pr_number: int, body: str, token: str | None = None) -> dict:
+    resp = httpx.post(
+        f"{GITHUB_API}/repos/{owner}/{repo}/issues/{pr_number}/comments",
+        headers=_auth_headers(token),
+        json={"body": body},
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def update_comment(owner: str, repo: str, comment_id: int, body: str, token: str | None = None) -> dict:
+    resp = httpx.patch(
+        f"{GITHUB_API}/repos/{owner}/{repo}/issues/comments/{comment_id}",
+        headers=_auth_headers(token),
+        json={"body": body},
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def post_or_update_comment(
+    owner: str, repo: str, pr_number: int, body: str, marker: str, token: str | None = None
+) -> dict:
+    """The single entry point comment posting should go through: finds this
+    bot's prior comment (if any) via `marker` and updates it in place,
+    otherwise creates a new one. `body` must itself start with `marker` —
+    that's what makes it findable on the *next* call.
+    """
+    existing = find_comment_with_marker(owner, repo, pr_number, marker, token=token)
+    if existing is not None:
+        return update_comment(owner, repo, existing["id"], body, token=token)
+    return create_comment(owner, repo, pr_number, body, token=token)
 
 
 def fetch_file_content(owner: str, repo: str, path: str, ref: str, token: str | None = None) -> str:

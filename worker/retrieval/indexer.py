@@ -40,7 +40,9 @@ def _is_test_file(path: str) -> bool:
     return bool(_TEST_FILENAME_RE.search(filename))
 
 
-def _fetch_supported_files(owner: str, name: str, paths: list[str], ref: str) -> dict[str, str]:
+def _fetch_supported_files(
+    owner: str, name: str, paths: list[str], ref: str, token: str | None = None
+) -> dict[str, str]:
     """Fetches every supported-language file's content. Deliberately does
     NOT swallow individual fetch failures (e.g. GitHub rate limiting): a
     partial fetch would silently produce incomplete call-graph/has_tests
@@ -49,7 +51,7 @@ def _fetch_supported_files(owner: str, name: str, paths: list[str], ref: str) ->
     fresh-looking-but-incomplete one. Let it raise; the scheduled job
     retries on its next tick.
     """
-    return {path: fetch_file_content(owner, name, path, ref) for path in paths}
+    return {path: fetch_file_content(owner, name, path, ref, token=token) for path in paths}
 
 
 def _referenced_in_tests(all_files: dict[str, str]) -> set[str]:
@@ -82,20 +84,20 @@ def index_repo(
     conn = get_connection(database_url)
     ensure_schema(conn)
 
-    head_sha = get_default_branch_head_sha(owner, name)
+    head_sha = get_default_branch_head_sha(owner, name, token=token)
     last_sha = get_last_indexed_sha(conn, repo)
 
     if last_sha == head_sha and not force_full:
         return {"status": "up_to_date", "sha": head_sha, "chunks_indexed": 0}
 
-    all_paths = list_repo_tree(owner, name, head_sha)
+    all_paths = list_repo_tree(owner, name, head_sha, token=token)
     supported_paths = [p for p in all_paths if get_language_for_file(p) is not None]
 
     if last_sha is None or force_full:
         changed_paths = supported_paths
         mode = "full"
     else:
-        diff_files = get_changed_files_between(owner, name, last_sha, head_sha)
+        diff_files = get_changed_files_between(owner, name, last_sha, head_sha, token=token)
         changed_paths = [
             f["filename"]
             for f in diff_files
@@ -111,7 +113,7 @@ def index_repo(
     # Call-graph/test-reference metadata needs full-repo context regardless
     # of which files changed — a caller in an untouched file is still a
     # real caller. Only chunking+embedding is scoped to changed_paths.
-    all_files = _fetch_supported_files(owner, name, supported_paths, head_sha)
+    all_files = _fetch_supported_files(owner, name, supported_paths, head_sha, token=token)
     callers_by_name = build_callers_by_name(all_files)
     test_referenced = _referenced_in_tests(all_files)
     incident_tags = load_incident_tags()
