@@ -71,6 +71,64 @@ def fetch_pr_files(owner: str, repo: str, pr_number: int, token: str | None = No
     return files
 
 
+def get_default_branch_head_sha(owner: str, repo: str, token: str | None = None) -> str:
+    """SPEC §5.1b: the reindex job pulls "the latest main" — resolve that to
+    a concrete commit SHA via the repo's actual default branch (not
+    hardcoded "main", since not every repo uses that name).
+    """
+    resp = httpx.get(
+        f"{GITHUB_API}/repos/{owner}/{repo}",
+        headers=_auth_headers(token),
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    default_branch = resp.json()["default_branch"]
+    resp = httpx.get(
+        f"{GITHUB_API}/repos/{owner}/{repo}/commits/{default_branch}",
+        headers=_auth_headers(token),
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()["sha"]
+
+
+def list_repo_tree(owner: str, repo: str, sha: str, token: str | None = None) -> list[str]:
+    """Return every file path in the repo at `sha` (recursive). Raises if
+    GitHub truncates the response (repo too large for one non-paginated
+    call) rather than silently indexing a partial tree.
+    """
+    resp = httpx.get(
+        f"{GITHUB_API}/repos/{owner}/{repo}/git/trees/{sha}",
+        headers=_auth_headers(token),
+        params={"recursive": "1"},
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get("truncated"):
+        raise ValueError(
+            f"Repo tree for {owner}/{repo}@{sha} was truncated by GitHub's API — "
+            "needs a paginated/incremental tree-walking strategy, not supported yet."
+        )
+    return [item["path"] for item in data["tree"] if item["type"] == "blob"]
+
+
+def get_changed_files_between(
+    owner: str, repo: str, base_sha: str, head_sha: str, token: str | None = None
+) -> list[dict]:
+    """SPEC §5.1b: "diffs it against the last-indexed commit SHA" — used by
+    the reindex job to re-embed only changed functions instead of the whole
+    repo on every run.
+    """
+    resp = httpx.get(
+        f"{GITHUB_API}/repos/{owner}/{repo}/compare/{base_sha}...{head_sha}",
+        headers=_auth_headers(token),
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json().get("files", [])
+
+
 def fetch_file_content(owner: str, repo: str, path: str, ref: str, token: str | None = None) -> str:
     """Fetch a file's full text content at a specific ref (e.g. a PR's head SHA)."""
     resp = httpx.get(

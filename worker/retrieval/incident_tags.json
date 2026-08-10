@@ -1,0 +1,51 @@
+[
+  {
+    "file_path": "src/requests/utils.py",
+    "function_name": "get_netrc_auth",
+    "tag": "CVE-2024-47081",
+    "summary": "netrc credential lookup matched on the full netloc (host:port) instead of hostname alone, letting a malicious/compromised server on an unexpected port receive credentials meant for a different service on the same host.",
+    "reference": "https://github.com/psf/requests/pull/6965"
+  },
+  {
+    "file_path": "src/requests/utils.py",
+    "function_name": "prepend_scheme_if_needed",
+    "tag": "CVE-2023-32681",
+    "summary": "Proxy URL parsing dropped embedded basic-auth credentials (user:pass@host) when normalizing the URL, silently sending proxy requests unauthenticated instead of failing loudly.",
+    "reference": "https://github.com/psf/requests/pull/6028"
+  },
+  {
+    "file_path": "src/requests/utils.py",
+    "function_name": "should_bypass_proxies",
+    "tag": "bpo-39057",
+    "summary": "no_proxy domain matching used naive endswith(), so a no_proxy entry like \"newdomain.com\" would incorrectly also match \"evilnewdomain.com\" (or \"localhost\" match \"notlocalhost\") — a domain-boundary bug with proxy-bypass security implications, ported from a CPython urllib fix.",
+    "reference": "https://github.com/psf/requests/pull/7427"
+  },
+  {
+    "file_path": "src/requests/sessions.py",
+    "function_name": "rebuild_auth",
+    "tag": "CVE-2018-18074",
+    "summary": "Authorization header was only stripped on redirect if the hostname changed — same-host-different-port or protocol-downgrade redirects still leaked the Authorization header to a server that shouldn't receive it.",
+    "reference": "https://github.com/psf/requests/pull/4718"
+  },
+  {
+    "file_path": "src/requests/sessions.py",
+    "function_name": "should_strip_auth",
+    "tag": "CVE-2018-18074",
+    "summary": "Added specifically to fix CVE-2018-18074 — centralizes the redirect auth-stripping decision (hostname, port, and scheme must all match, with an explicit http->https same-port exception) so rebuild_auth's stripping logic can't drift out of sync with it again.",
+    "reference": "https://github.com/psf/requests/pull/4718"
+  },
+  {
+    "file_path": "src/requests/adapters.py",
+    "function_name": "get_connection_with_tls_context",
+    "tag": "CVE-2024-35195",
+    "summary": "The connection pool (and its verify=False setting) was cached at the session level on first use; a later request on the same session that explicitly passed verify=True could still silently reuse the unverified pool from the first request.",
+    "reference": "https://github.com/psf/requests/pull/6710"
+  },
+  {
+    "file_path": "src/requests/models.py",
+    "function_name": "prepare_body",
+    "tag": "bug-2896",
+    "summary": "Uploading a zero-length file-like object set Content-Length: 0 instead of falling back to chunked Transfer-Encoding, because `if length is not None` treated the falsy-but-valid length of 0 as \"known\" rather than checking truthiness.",
+    "reference": "https://github.com/psf/requests/pull/2896"
+  }
+]
