@@ -44,6 +44,8 @@ def parse_assessment(raw_text: str) -> Assessment:
         raise AssessmentParseError(f"Malformed JSON in response: {e}") from e
 
     risk_level = data.get("risk_level")
+    if isinstance(risk_level, str):
+        risk_level = risk_level.strip().lower()
     if risk_level not in RISK_LEVELS:
         raise AssessmentParseError(f"Invalid or missing risk_level: {risk_level!r}")
 
