@@ -80,12 +80,19 @@ def index_repo(
     """Index (or incrementally re-index) `repo` into pgvector. Returns a
     stats dict describing what happened — used by both the manual-trigger
     path and the scheduled job's logging.
+
+    Deliberately does NOT hold one Postgres connection open across the
+    whole function: the GitHub-fetch + embedding phase between the initial
+    metadata read and the final write can run for several minutes on a
+    large repo, and a connection left idle that long got dropped by the
+    network stack in practice (see PROBLEMS.md) — a fresh connection is
+    opened right before the write transaction instead.
     """
-    conn = get_connection(database_url)
-    ensure_schema(conn)
+    with get_connection(database_url) as setup_conn:
+        ensure_schema(setup_conn)
+        last_sha = get_last_indexed_sha(setup_conn, repo)
 
     head_sha = get_default_branch_head_sha(owner, name, token=token)
-    last_sha = get_last_indexed_sha(conn, repo)
 
     if last_sha == head_sha and not force_full:
         return {"status": "up_to_date", "sha": head_sha, "chunks_indexed": 0}
@@ -130,11 +137,10 @@ def index_repo(
     else:
         embeddings = []
 
-    # Single transaction: deletes + upserts + the last-indexed-SHA bump all
-    # succeed together or none do. Without this, a failure partway through
-    # the write loop could leave last_indexed_sha pointing past chunks that
-    # were never actually written.
-    with conn.transaction(), conn.cursor() as cur:
+    # Fresh connection for the write phase (see docstring) — deletes,
+    # upserts, and the last-indexed-SHA bump all happen in one transaction
+    # so a failure partway through can't leave a half-written state.
+    with get_connection(database_url) as conn, conn.transaction(), conn.cursor() as cur:
         changed_set = set(changed_paths)
         if mode == "incremental":
             changed_set |= set(removed_paths)
@@ -176,8 +182,6 @@ def index_repo(
                 ),
             )
         set_last_indexed_sha(conn, repo, head_sha)
-
-    conn.close()
 
     return {
         "status": "indexed",
