@@ -4,6 +4,8 @@ LLM prose pasted in. Both backends (Ollama, Gemini) target this same
 schema, which is what makes them swappable behind a provider-agnostic
 interface (SPEC §5.5).
 """
+import json
+import re
 from dataclasses import dataclass, field
 
 RISK_LEVELS = ("low", "medium", "high")
@@ -32,9 +34,6 @@ def parse_assessment(raw_text: str) -> Assessment:
     silently defaulting that would produce a misleadingly confident
     assessment instead of an honest parse failure.
     """
-    import json
-    import re
-
     match = re.search(r"\{.*\}", raw_text, re.DOTALL)
     if not match:
         raise AssessmentParseError(f"No JSON object found in response: {raw_text[:200]!r}")
