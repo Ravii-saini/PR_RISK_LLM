@@ -53,3 +53,8 @@ def test_parse_assessment_defaults_missing_arrays_to_empty():
 def test_parse_assessment_non_array_reasons_raises():
     with pytest.raises(AssessmentParseError):
         parse_assessment('{"risk_level": "low", "reasons": "not a list"}')
+
+
+def test_parse_assessment_normalizes_risk_level_case_and_whitespace():
+    a = parse_assessment('{"risk_level": " High ", "reasons": [], "suggested_checks": []}')
+    assert a.risk_level == "high"
