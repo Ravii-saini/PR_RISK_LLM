@@ -5,7 +5,7 @@ by controllable fakes, not the real network.
 """
 import worker.llm.assess as assess_module
 from worker.llm.assess import assess_pr
-from worker.retrieval.query import RetrievalResult
+from worker.retrieval.query import RetrievalResult, SimilarFunction
 
 RESULTS = [
     RetrievalResult(
@@ -15,6 +15,18 @@ RESULTS = [
         callers=["b.py::caller"],
         code="def fn():\n    pass\n",
     )
+]
+
+_SIMILAR = SimilarFunction(
+    file_path="z.py", function_name="near", similarity=0.9, callers=[], has_tests=False, incident_tags=[]
+)
+MULTI_RESULTS = [
+    RetrievalResult(
+        file_path="a.py", function_name="fn1", already_indexed=True, code="def fn1():\n    pass\n", similar=[_SIMILAR]
+    ),
+    RetrievalResult(
+        file_path="a.py", function_name="fn2", already_indexed=True, code="def fn2():\n    pass\n", similar=[_SIMILAR]
+    ),
 ]
 
 VALID_JSON = '{"risk_level": "high", "reasons": ["r"], "suggested_checks": ["c"]}'
@@ -34,6 +46,37 @@ def test_assess_pr_happy_path_uses_ollama_only(monkeypatch):
     assert calls == ["ollama"]
     assert a.risk_level == "high"
     assert a.degraded is False
+
+
+def test_assess_pr_trims_first_attempt_for_multi_function_pr(monkeypatch):
+    prompts_seen = {}
+
+    def fake_ollama(prompt, *a, **k):
+        prompts_seen["prompt"] = prompt
+        return VALID_JSON
+
+    monkeypatch.setattr(assess_module.ollama_client, "generate", fake_ollama)
+
+    assess_pr("o", "r", 1, MULTI_RESULTS, "host", "model", "key", "gmodel")
+
+    # SPEC §7 amendment: >1 changed function trims the *first* Ollama
+    # attempt too, dropping the semantic-neighbor section.
+    assert "Semantically similar" not in prompts_seen["prompt"]
+
+
+def test_assess_pr_keeps_full_prompt_on_first_attempt_when_single_function_has_similar(monkeypatch):
+    single_with_similar = [MULTI_RESULTS[0]]
+    prompts_seen = {}
+
+    def fake_ollama(prompt, *a, **k):
+        prompts_seen["prompt"] = prompt
+        return VALID_JSON
+
+    monkeypatch.setattr(assess_module.ollama_client, "generate", fake_ollama)
+
+    assess_pr("o", "r", 1, single_with_similar, "host", "model", "key", "gmodel")
+
+    assert "Semantically similar" in prompts_seen["prompt"]
 
 
 def test_assess_pr_falls_back_to_gemini_on_ollama_timeout(monkeypatch):

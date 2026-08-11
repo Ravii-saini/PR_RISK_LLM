@@ -61,6 +61,47 @@ def test_retrieve_for_unindexed_function_returns_empty_own_metadata(pg_conn, set
     assert result.incident_tags == []
 
 
+def test_retrieve_falls_back_to_path_suffix_match_when_exact_path_differs(pg_conn, settings):
+    # Indexed under the current (longer) path; the diff being reviewed
+    # reports the pre-migration (shorter) historical path for the same file.
+    _insert_chunk(
+        pg_conn,
+        "src/requests/utils.py",
+        "add",
+        ADD_CODE,
+        callers=["b.py::caller"],
+        has_tests=True,
+        incident_tags=[{"tag": "BUG-1", "summary": "x", "reference": "https://github.com/x/y/pull/1"}],
+    )
+
+    result = retrieve_context_for_function(pg_conn, TEST_REPO, MODEL, "requests/utils.py", "add", ADD_CODE, top_k=5)
+
+    assert result.already_indexed is True
+    assert result.callers == ["b.py::caller"]
+    assert result.has_tests is True
+    assert result.incident_tags[0]["tag"] == "BUG-1"
+
+
+def test_retrieve_path_suffix_match_respects_directory_boundary(pg_conn, settings):
+    # "myrequests/utils.py" must NOT match a query for "requests/utils.py" --
+    # same trailing substring, but not actually the same path/component.
+    _insert_chunk(pg_conn, "myrequests/utils.py", "add", ADD_CODE, has_tests=True)
+
+    result = retrieve_context_for_function(pg_conn, TEST_REPO, MODEL, "requests/utils.py", "add", ADD_CODE, top_k=5)
+
+    assert result.already_indexed is False
+
+
+def test_retrieve_prefers_exact_path_match_over_suffix_match(pg_conn, settings):
+    # Both an exact match and a same-suffix match exist; exact must win.
+    _insert_chunk(pg_conn, "vendor/requests/utils.py", "add", ADD_CODE, has_tests=False)
+    _insert_chunk(pg_conn, "requests/utils.py", "add", ADD_CODE, has_tests=True)
+
+    result = retrieve_context_for_function(pg_conn, TEST_REPO, MODEL, "requests/utils.py", "add", ADD_CODE, top_k=5)
+
+    assert result.has_tests is True
+
+
 def test_retrieve_similar_ranks_semantically_close_code_higher(pg_conn, settings):
     _insert_chunk(pg_conn, "a.py", "add", ADD_CODE)
     _insert_chunk(pg_conn, "a.py", "sum_two", SUM_CODE)

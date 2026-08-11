@@ -10,6 +10,13 @@
 A response that comes back but fails schema validation (AssessmentParseError)
 is treated the same as a network/timeout failure — it's equally unusable,
 just for a different reason.
+
+SPEC §7 amendment (2026-08-11): the Phase 6 eval measured Ollama timing out
+on 3/12 real PRs, all multi-changed-function ones — the untrimmed prompt
+runs large enough on this hardware to push generation past the 30s budget.
+The *first* Ollama attempt is now also trimmed when a PR has more than one
+changed function, not just the fallback attempt — single-function PRs
+(never the ones timing out) still get the full prompt on the first try.
 """
 import logging
 
@@ -33,10 +40,13 @@ def assess_pr(
     gemini_api_key: str,
     gemini_model: str,
 ) -> Assessment:
-    full_prompt = build_prompt(owner, repo_name, pr_number, results, trimmed=False)
+    # Multi-function PRs produce large enough prompts to risk the 30s N4
+    # timeout on this hardware (see module docstring) -- trim the first
+    # attempt too in that case, not just the fallback.
+    primary_prompt = build_prompt(owner, repo_name, pr_number, results, trimmed=len(results) > 1)
 
     try:
-        raw = ollama_client.generate(full_prompt, ollama_host, ollama_model)
+        raw = ollama_client.generate(primary_prompt, ollama_host, ollama_model)
         return parse_assessment(raw)
     except Exception:
         logger.warning(

@@ -57,16 +57,26 @@ def retrieve_context_for_function(
     `code` is the function's post-change body (from the diff being
     reviewed) — embedded fresh rather than reusing a stored embedding,
     since the whole point is to assess the *new* version of the code.
+
+    The "own" lookup tries an exact `file_path` match first, then falls
+    back to a path-boundary suffix match (found via the Phase 6 eval: a
+    historical PR's file path can lack a prefix the current index has,
+    e.g. after a repo migrates to a `src/` layout — `requests/utils.py`
+    vs `src/requests/utils.py` — same function, same file, different
+    recorded path). The suffix match requires a `/` (or nothing) right
+    before the match point, so `myrequests/utils.py` does not incorrectly
+    match a query for `requests/utils.py`.
     """
     own = conn.execute(
         """
         SELECT callers, has_tests, incident_tags
         FROM code_chunks
-        WHERE repo = %s AND file_path = %s AND function_name = %s
-        ORDER BY updated_at DESC
+        WHERE repo = %s AND function_name = %s
+          AND (file_path = %s OR right(file_path, length(%s) + 1) = '/' || %s)
+        ORDER BY (file_path = %s) DESC, updated_at DESC
         LIMIT 1
         """,
-        (repo, file_path, function_name),
+        (repo, function_name, file_path, file_path, file_path, file_path),
     ).fetchone()
 
     query_embedding = embed_text(code, embedding_model)
