@@ -185,6 +185,105 @@ prompt sent explicitly said `Incident history: none` — the model didn't
 misread a fact, it invented one, backwards relative to its own system
 instructions. Logged in full in PROBLEMS.md.
 
+## Definition of Done
+
+Six things this project isn't "done" without being able to show — walked
+through against real evidence, not just described:
+
+1. **A real PR comment referencing specific retrieved context.** Four
+   independently-verified comments on this repo (fetched back via the
+   GitHub API, not just trusted from a return value): `issuecomment-5244923399`
+   (PR #2), `-5248615090` (PR #3), `-5248622711` (PR #4), `-5248633696`
+   (PR #5) — each references real caller names, real test-coverage flags,
+   real function names, not generic text.
+2. **Why this isn't "RAG with extra steps."** `worker/retrieval/query.py`'s
+   own facts (`callers`/`has_tests`/`incident_tags`, computed once at index
+   time by `worker/retrieval/call_graph.py`) are always returned alongside
+   the top-K semantic matches, never substituted by them. Concretely proven
+   by eval PR #7328 (`resolve_redirects`): near-zero incident-tag/semantic
+   signal on its own, but structurally fragile (6 real callers, directly
+   adjacent to two real CVEs in the same file) — a similarity-only system
+   would have missed it; the call-graph signal is what catches it.
+3. **Duplicate delivery / concurrent PRs / LLM timeout+fallback, with real
+   test evidence:** `tests/test_receiver.py::test_duplicate_delivery_only_one_job_enqueued`,
+   `::test_concurrent_delivery_two_prs_no_cross_contamination`,
+   `tests/test_debounce.py::test_rapid_double_push_only_latest_sha_processed`,
+   `tests/test_assess.py::test_assess_pr_falls_back_to_gemini_on_ollama_timeout`
+   — plus a real (not mocked) Ollama connection failure during the Phase 5
+   live demo that Gemini genuinely answered in its place.
+4. **Honest eval results, including failures, plus the backend comparison.**
+   See [Evaluation results](#evaluation-results) above — including two
+   places a wrong number nearly got reported (fabricated SHAs, a
+   CPU-contention-inflated timeout count) and was caught before publishing,
+   not after.
+5. **Justify dedup/debounce, GitHub App vs. PAT, and scheduled vs.
+   push-triggered reindex.** Dedup+debounce exists so a force-pushed PR
+   doesn't burn an LLM call on every intermediate push. The GitHub App
+   (not a PAT) is the production-realistic pattern — and cost a real
+   afternoon: the original `issues:write` permission grant turned out
+   insufficient for posting *PR* comments specifically, needed
+   `pull_requests:write` too, discovered via a live `403`. The reindex job
+   is scheduled rather than push-triggered because embedding freshness
+   (N5) is a property of the whole repo, not of any one PR event.
+6. **Why the eval runs offline against a public repo but the demo runs live
+   against this one.** The GitHub App only needs to be installed where it
+   posts comments — the public eval repo (`psf/requests`) needs zero write
+   access, so the offline eval can run against real historical data with no
+   install at all. Demonstrated exactly that split: the 12-PR eval never
+   touched `psf/requests` beyond reading it; the live demo posted 3 real
+   comments here.
+
+## Notable problems & what I'd do differently
+
+The full problem log (30+ entries, one per real bug/blocker/design fork) is
+a local working doc, not pushed — these are the ones worth surfacing here.
+
+- **A change touching only a decorator line was silently dropped** from
+  diff parsing — tree-sitter's `function_definition` node starts at `def`,
+  one line *after* the decorator, so decorator-only diffs (route paths,
+  retry policies, permission checks — exactly the "looks trivial but isn't"
+  changes this tool exists to catch) fell outside every function's
+  recorded range. Fixed by widening the range when a `decorated_definition`
+  parent is present.
+- **A whole construct was invisible, not just mis-ranged.** Adding
+  multi-language support, JS/TS generator functions (`function* gen(){}`)
+  weren't attributed to the wrong function — they were absent from every
+  result, because their tree-sitter node type had never been added to the
+  language registry. An absence is a harder failure mode to catch than a
+  wrong answer; it looks identical to "nothing changed here."
+- **Two real production bugs shipped and were both caught by re-verifying
+  against a real run, not by re-reading the code:** `index_repo` accepted a
+  `token` parameter it never actually used anywhere in its body (broke
+  authenticated indexing silently); the same function held one Postgres
+  connection open across an entire multi-minute embed-and-write pass, which
+  got dropped as idle before the final write on a real run.
+- **Small-model grounding accuracy is a real, repeatable weak point** — not
+  a one-off. Caught the same failure mode three separate times: misstating
+  a real fact (claimed no test coverage when the prompt said otherwise),
+  and outright inventing one (claimed "a documented incident history" when
+  the prompt explicitly said `Incident history: none`) — the same identical
+  prompt given to Gemini got every fact right both times. This is why
+  Section 8's eval measures both backends rather than trusting either.
+- **Nearly shipped fabricated data twice, caught both times before running
+  anything against it:** hand-transcribed commit SHA tails from a truncated
+  debug print instead of the real value sitting one file away; and trusted
+  a re-run's timeout count that had actually been inflated by running the
+  full test suite concurrently in the background — the number moved in a
+  direction the actual code change couldn't explain, which is what
+  triggered a second look before reporting it.
+- **A historical-PR path mismatch silently broke retrieval** for pre-`src/`-
+  layout PRs (`requests/utils.py` vs. the current index's
+  `src/requests/utils.py`) — the diff parser had the right function name
+  the whole time; it was an exact-string DB lookup that couldn't see past
+  the prefix. Fixed with a `/`-boundary suffix fallback, not a raw
+  substring match (so `myrequests/x.py` can't falsely match `requests/x.py`).
+- **A "fixed" environment problem wasn't actually fixed.** torch's DLL load
+  crashed with the exact same error two phases apart. The first fix
+  trusted a repair-installer's "success" exit code; the file it claimed to
+  replace (`msvcp140.dll`) was untouched, still the old version, the whole
+  time. Second time, verified the fix against the artifact itself (the
+  file's own version) before calling it done, not the installer's report.
+
 ## Tech stack
 
 | Layer | Choice |
