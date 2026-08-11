@@ -6,12 +6,12 @@ obviously fragile from the diff alone." It grounds an LLM's assessment in
 real codebase context (call graphs, test coverage, past incident patterns)
 instead of asking a model to review a diff in isolation with no context.
 
-**Status: in progress.** This is being built incrementally and documented
-honestly as it goes — see [Current status](#current-status) below for what's
-actually working today versus what's still ahead. The full pipeline (webhook
-→ retrieval → grounded LLM assessment → posted comment) is real and
-live-verified end to end; the offline evaluation (below) is done and the
-live demo pass is the one remaining item.
+**Status: feature-complete, pending final technical review.** This was built
+incrementally and documented honestly as it went — see [Current
+status](#current-status) below for what's actually working today. The full
+pipeline (webhook → retrieval → grounded LLM assessment → posted comment) is
+real and live-verified end to end; both the offline evaluation and the live
+demo (below) are done.
 
 ## Why this exists
 
@@ -76,7 +76,7 @@ out and retrying into a duplicate-processing storm.
 | LLM risk assessment (Ollama + Gemini fallback) | ✅ Done |
 | GitHub comment posting | ✅ Done — live-verified on a real PR |
 | Offline evaluation against labeled historical PRs | ✅ Done — see [Evaluation results](#evaluation-results) |
-| Live demo (2-3 real PRs, posted comments) | ⏳ Not yet run |
+| Live demo (2-3 real PRs, posted comments) | ✅ Done — 3 real PRs, all 3 comments independently re-fetched via the GitHub API and confirmed (see [Evaluation results](#evaluation-results)) |
 
 Every phase so far has real tests behind it — duplicate webhook delivery,
 concurrent PRs, debounce/supersede, function-level diff parsing, retrieval,
