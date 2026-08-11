@@ -56,6 +56,6 @@ def parse_assessment(raw_text: str) -> Assessment:
 
     return Assessment(
         risk_level=risk_level,
-        reasons=[str(r) for r in reasons],
-        suggested_checks=[str(c) for c in suggested_checks],
+        reasons=[str(r).strip() for r in reasons],
+        suggested_checks=[str(c).strip() for c in suggested_checks],
     )
