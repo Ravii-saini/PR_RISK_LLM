@@ -5,6 +5,7 @@ description = "Automated PR structural-risk review grounded in codebase retrieva
 authors = [
     { name = "Ravii-saini", email = "ravisainijnv@gmail.com" }
 ]
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
