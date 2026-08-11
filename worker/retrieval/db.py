@@ -21,6 +21,10 @@ def ensure_schema(conn: psycopg.Connection) -> None:
 
 
 def get_last_indexed_sha(conn: psycopg.Connection, repo: str) -> str | None:
+    """Return the SHA this repo was last indexed at, or None if it has
+    never been indexed — the reindex job uses this to decide between a
+    full index and an incremental diff-against-last-SHA pass.
+    """
     row = conn.execute(
         "SELECT last_indexed_sha FROM indexed_repos WHERE repo = %s", (repo,)
     ).fetchone()
