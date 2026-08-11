@@ -18,16 +18,13 @@ import time
 import redis
 
 from config import get_settings
+from worker.redis_keys import latest_sha_key
 
 logger = logging.getLogger(__name__)
 
 STREAM_NAME = "pr_events"
 GROUP_NAME = "pr_workers"
 CONSUMER_NAME = "worker-1"
-
-
-def latest_sha_key(repo: str, pr_number: int) -> str:
-    return f"latest_sha:{repo}:{pr_number}"
 
 
 def ensure_group(r: redis.Redis, stream: str = STREAM_NAME, group: str = GROUP_NAME) -> None:
