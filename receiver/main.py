@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request
 
 from config import Settings, get_settings
 from receiver.redis_client import get_redis
+from worker.redis_keys import latest_sha_key
 
 app = FastAPI()
 
@@ -31,10 +32,6 @@ def verify_signature(payload_body: bytes, signature_header: str | None, secret: 
 
 def dedup_key(repo: str, pr_number: int, head_sha: str) -> str:
     return f"dedup:{repo}:{pr_number}:{head_sha}"
-
-
-def latest_sha_key(repo: str, pr_number: int) -> str:
-    return f"latest_sha:{repo}:{pr_number}"
 
 
 @app.post("/webhooks/github")
