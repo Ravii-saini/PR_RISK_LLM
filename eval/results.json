@@ -1,0 +1,1027 @@
+{
+  "run_at": "2026-08-11T03:49:49.967551+00:00",
+  "ollama_model": "qwen2.5-coder:1.5b",
+  "gemini_model": "gemini-3.1-flash-lite",
+  "embedding_model": "jinaai/jina-embeddings-v2-base-code",
+  "n_prs": 12,
+  "results": [
+    {
+      "pr_number": 6965,
+      "label": "risky",
+      "label_basis": "incident_tag",
+      "retrieval_latency_s": 11.23,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 27.2,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/utils.py::get_netrc_auth"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": "CVE-2024-47081",
+        "expected_incident_tag_found": true,
+        "functions_already_indexed": [
+          true
+        ],
+        "functions_with_callers": [
+          5
+        ],
+        "functions_with_tests": [
+          true
+        ]
+      },
+      "ollama": {
+        "latency_s": 15.97,
+        "risk_level": "medium",
+        "reasons": [
+          "The function `get_netrc_auth` is semantically similar to `urldefragauth`, which is known to have a CVE-2024-47081. This similarity suggests that the function may be vulnerable to the same issue.",
+          "The function has no test coverage, indicating that it's unclear whether it behaves as expected under various conditions."
+        ],
+        "suggested_checks": [
+          "Add unit tests for `get_netrc_auth` to ensure its behavior is consistent with other similar functions.",
+          "Review the code for any potential security vulnerabilities or misconfigurations."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1009,
+        "output_tokens": 143,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 6,
+          "facts_referenced": 1,
+          "referenced": [
+            "cve-2024-47081"
+          ]
+        }
+      },
+      "gemini": {
+        "latency_s": 2.34,
+        "risk_level": "high",
+        "reasons": [
+          "The function has a documented incident history (CVE-2024-47081) specifically related to credential leakage via incorrect netloc parsing.",
+          "The function is a critical utility used by 5 callers, including core session management functions like src/requests/sessions.py::prepare_request and src/requests/sessions.py::rebuild_auth.",
+          "The logic involves sensitive credential handling (netrc), where minor regressions in hostname extraction or file path expansion can lead to security vulnerabilities."
+        ],
+        "suggested_checks": [
+          "Verify that the hostname extraction logic correctly isolates the host from the port to prevent the recurrence of CVE-2024-47081.",
+          "Add regression tests specifically targeting credential lookup when the URL contains non-standard ports or malformed hostnames.",
+          "Audit the os.path.expanduser error handling to ensure that failures in environment variable resolution do not lead to silent credential bypasses."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1125,
+        "output_tokens": 233,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 6,
+          "facts_referenced": 3,
+          "referenced": [
+            "cve-2024-47081",
+            "src/requests/sessions.py::prepare_request",
+            "src/requests/sessions.py::rebuild_auth"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 6028,
+      "label": "risky",
+      "label_basis": "incident_tag",
+      "retrieval_latency_s": 2.42,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 13.93,
+      "retrieval": {
+        "expected_functions_found": [],
+        "expected_functions_missing": [
+          "src/requests/utils.py::prepend_scheme_if_needed"
+        ],
+        "expected_incident_tag": "CVE-2023-32681",
+        "expected_incident_tag_found": true,
+        "functions_already_indexed": [
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          3,
+          0
+        ],
+        "functions_with_tests": [
+          true,
+          false
+        ]
+      },
+      "ollama": {
+        "latency_s": 11.51,
+        "risk_level": "medium",
+        "reasons": [
+          "The function `prepend_scheme_if_needed` is used in multiple places and does not have test coverage.",
+          "It is semantically similar to another function that was recently modified with a CVE-2023-32681 incident."
+        ],
+        "suggested_checks": [
+          "Add tests for the new function `prepend_scheme_if_needed`.",
+          "Review the existing code for any potential issues related to the CVE-2023-32681 incident."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1150,
+        "output_tokens": 122,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 5,
+          "facts_referenced": 1,
+          "referenced": [
+            "cve-2023-32681"
+          ]
+        }
+      },
+      "gemini": {
+        "latency_s": 2.45,
+        "risk_level": "high",
+        "reasons": [
+          "The function prepend_scheme_if_needed is directly linked to CVE-2023-32681, which involved critical security failures in proxy authentication handling during URL normalization.",
+          "The function is used by core networking components (src/requests/adapters.py::get_connection and get_connection_with_tls_context), meaning any regression here directly impacts request security and authentication headers.",
+          "The test function test_prepend_scheme_if_needed has zero known callers and no test coverage, which is a risk signal for a utility function that handles complex URL parsing logic."
+        ],
+        "suggested_checks": [
+          "Verify that the logic for reconstructing the netloc with auth credentials does not inadvertently strip or misplace user:pass components, specifically testing edge cases like empty passwords or special characters in credentials.",
+          "Add regression tests specifically targeting the scenario described in CVE-2023-32681 to ensure that proxy authentication is preserved during the scheme-prepending process.",
+          "Perform a manual audit of the urlunparse output to ensure that the manual concatenation of auth and netloc does not violate RFC 3986 URL formatting expectations."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1288,
+        "output_tokens": 279,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 5,
+          "facts_referenced": 3,
+          "referenced": [
+            "cve-2023-32681",
+            "no test coverage",
+            "src/requests/adapters.py::get_connection"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 7427,
+      "label": "risky",
+      "label_basis": "incident_tag",
+      "retrieval_latency_s": 3.56,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 16.22,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/utils.py::should_bypass_proxies"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": "bpo-39057",
+        "expected_incident_tag_found": true,
+        "functions_already_indexed": [
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          9,
+          0
+        ],
+        "functions_with_tests": [
+          true,
+          false
+        ]
+      },
+      "ollama": {
+        "latency_s": 12.66,
+        "risk_level": "low",
+        "reasons": [
+          "The function `should_bypass_proxies` checks if a URL should bypass proxies based on the value of the `no_proxy` environment variable. The function uses a naive endswith() check to match the hostname against the no_proxy list, which can lead to incorrect matches for domains that merely end with the no_proxy entry (e.g., 'newdomain.com' matching 'evilnewdomain.com'). This is a domain-boundary bug with proxy-bypass security implications.",
+          "The function has test coverage: True"
+        ],
+        "suggested_checks": [
+          "Review the implementation of `should_bypass_proxies` to ensure it correctly handles domain boundaries and does not rely on naive endswith() checks."
+        ],
+        "predicted_label": "safe",
+        "prompt_tokens": 1611,
+        "output_tokens": 165,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 11,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      },
+      "gemini": {
+        "latency_s": 1.74,
+        "risk_level": "high",
+        "reasons": [
+          "The function 'should_bypass_proxies' has a documented incident history (bpo-39057) regarding domain-boundary bypass vulnerabilities, which are critical security issues.",
+          "The change modifies logic that is highly sensitive to string matching and domain parsing, which has historically led to CVEs in similar libraries (urllib).",
+          "The test function 'test_should_bypass_proxies_no_proxy_domain_boundary' has zero known callers and no test coverage, meaning the regression test itself is not being verified by the existing test suite."
+        ],
+        "suggested_checks": [
+          "Verify that the domain boundary logic correctly handles edge cases like subdomains and port-specific bypasses.",
+          "Ensure that the 'no_proxy' parsing logic is consistent with the fix for bpo-39057 to prevent 'evilnewdomain.com' from matching 'newdomain.com'.",
+          "Add the new test case to the main test suite so it is executed during CI, as it currently has no test coverage."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1901,
+        "output_tokens": 253,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 11,
+          "facts_referenced": 2,
+          "referenced": [
+            "bpo-39057",
+            "no test coverage"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 4718,
+      "label": "risky",
+      "label_basis": "incident_tag",
+      "retrieval_latency_s": 3.67,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 17.43,
+      "retrieval": {
+        "expected_functions_found": [],
+        "expected_functions_missing": [
+          "src/requests/sessions.py::rebuild_auth",
+          "src/requests/sessions.py::should_strip_auth"
+        ],
+        "expected_incident_tag": "CVE-2018-18074",
+        "expected_incident_tag_found": true,
+        "functions_already_indexed": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          6,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "functions_with_tests": [
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "ollama": {
+        "latency_s": 13.76,
+        "risk_level": "medium",
+        "reasons": [
+          "The `should_strip_auth` function is semantically similar to the existing code in `auth.py`, which was fixed by CVE-2018-18074. This suggests that the change could introduce a security risk if not carefully managed.",
+          "The function has no test coverage, indicating that it's unclear whether this change will break backwards compatibility or cause unexpected behavior."
+        ],
+        "suggested_checks": [
+          "Add unit tests for `should_strip_auth` to ensure its correctness and prevent future bugs.",
+          "Review the incident history of CVE-2018-18074 to understand the potential impact of this change on existing users."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 2879,
+        "output_tokens": 159,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 15,
+          "facts_referenced": 2,
+          "referenced": [
+            "cve-2018-18074",
+            "no test coverage"
+          ]
+        }
+      },
+      "gemini": {
+        "latency_s": 2.31,
+        "risk_level": "high",
+        "reasons": [
+          "The function 'rebuild_auth' is directly involved in credential handling and has a documented history with CVE-2018-18074 regarding credential leakage during redirects.",
+          "The function 'rebuild_auth' lacks test coverage, which is critical given its role in preventing security regressions.",
+          "The function 'should_strip_auth' is a security-sensitive helper that was specifically introduced to mitigate CVE-2018-18074; any changes here carry a high risk of re-introducing credential leakage.",
+          "Multiple test functions (e.g., 'test_should_strip_auth_host_change', 'test_should_strip_auth_http_downgrade') have zero known callers and no test coverage, making their effectiveness in preventing regressions unclear."
+        ],
+        "suggested_checks": [
+          "Perform a security audit of the 'rebuild_auth' logic to ensure that the 'should_strip_auth' integration covers all edge cases for protocol downgrades and port changes.",
+          "Add comprehensive unit tests for 'rebuild_auth' to ensure it correctly handles the 'Authorization' header under various redirect scenarios.",
+          "Verify that the new test cases are actually executed by the test runner, as they are currently flagged with zero callers and no test coverage.",
+          "Conduct a regression test specifically targeting the scenarios described in CVE-2018-18074 to ensure the fix remains robust."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 3504,
+        "output_tokens": 340,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 15,
+          "facts_referenced": 2,
+          "referenced": [
+            "cve-2018-18074",
+            "no test coverage"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 6710,
+      "label": "risky",
+      "label_basis": "incident_tag",
+      "retrieval_latency_s": 4.33,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 19.83,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/adapters.py::get_connection_with_tls_context"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": "CVE-2024-35195",
+        "expected_incident_tag_found": true,
+        "functions_already_indexed": [
+          true,
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          1,
+          0,
+          31
+        ],
+        "functions_with_tests": [
+          false,
+          false,
+          true
+        ]
+      },
+      "ollama": {
+        "latency_s": 15.5,
+        "risk_level": "high",
+        "reasons": [
+          "The `get_connection_with_tls_context` function is deprecated and should be replaced with `get_connection_with_tls_context`. This change introduces a new risk signal because it changes the behavior of the function without providing clear documentation or test coverage.",
+          "The `send` method in `requests.adapters.py::send` has zero known callers, which means it's not being used by any other part of the codebase. This combination is itself a risk signal (untested, and impact is unclear)."
+        ],
+        "suggested_checks": [
+          "Review the deprecation warning and update all references to `get_connection_with_tls_context` in the codebase.",
+          "Add test coverage for the new `get_connection_with_tls_context` function."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 2789,
+        "output_tokens": 170,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 35,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      },
+      "gemini": {
+        "latency_s": 2.19,
+        "risk_level": "high",
+        "reasons": [
+          "The function 'get_connection_with_tls_context' is directly implicated in the incident history of CVE-2024-35195, which involves critical TLS verification bypasses due to improper connection pool caching.",
+          "The function 'get_connection_with_tls_context' lacks test coverage, which is highly dangerous given its role in managing security-sensitive TLS contexts.",
+          "The function 'get_connection' has zero known callers and no test coverage, making it an untested legacy component that is difficult to verify for regressions.",
+          "The 'send' function is a high-traffic entry point (31 callers) that now relies on the modified 'get_connection_with_tls_context', propagating any potential TLS caching bugs to the entire library."
+        ],
+        "suggested_checks": [
+          "Add comprehensive unit tests for 'get_connection_with_tls_context' specifically targeting the CVE-2024-35195 scenario: verify that changing 'verify' parameters results in distinct connection pools.",
+          "Perform a regression test on 'send' to ensure that TLS settings are correctly applied and not cached across different requests within the same session.",
+          "Audit all 'HTTPAdapter' subclasses in the codebase to ensure they are correctly migrated to 'get_connection_with_tls_context' as per the deprecation warning.",
+          "Verify that the 'proxy_manager' logic in 'get_connection_with_tls_context' correctly handles the 'verify' and 'cert' parameters to prevent similar pool-caching vulnerabilities."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 3351,
+        "output_tokens": 363,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 35,
+          "facts_referenced": 2,
+          "referenced": [
+            "cve-2024-35195",
+            "no test coverage"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 2896,
+      "label": "risky",
+      "label_basis": "incident_tag",
+      "retrieval_latency_s": 1.81,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 14.84,
+      "retrieval": {
+        "expected_functions_found": [],
+        "expected_functions_missing": [
+          "src/requests/models.py::prepare_body"
+        ],
+        "expected_incident_tag": "bug-2896",
+        "expected_incident_tag_found": true,
+        "functions_already_indexed": [
+          true
+        ],
+        "functions_with_callers": [
+          1
+        ],
+        "functions_with_tests": [
+          false
+        ]
+      },
+      "ollama": {
+        "latency_s": 13.03,
+        "risk_level": "medium",
+        "reasons": [
+          "The function `prepare_body` is called by multiple other functions (`src/requests/models.py::prepare`, `src/requests/adapters.py::SOCKSProxyManager`, etc.), and it does not have test coverage. This makes it difficult to ensure that the changes do not introduce bugs or security vulnerabilities.",
+          "There is an incident history indicating that a bug was reported related to uploading a zero-length file-like object, which could lead to unexpected behavior if this change is applied."
+        ],
+        "suggested_checks": [
+          "Add unit tests for `prepare_body` to ensure it behaves as expected with different inputs.",
+          "Review the code for any potential security vulnerabilities that might be introduced by changing the way data is handled in HTTP requests."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 927,
+        "output_tokens": 172,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 3,
+          "facts_referenced": 1,
+          "referenced": [
+            "src/requests/models.py::prepare"
+          ]
+        }
+      },
+      "gemini": {
+        "latency_s": 1.95,
+        "risk_level": "high",
+        "reasons": [
+          "The function has no test coverage, which is critical given it handles complex logic for HTTP body preparation and stream detection.",
+          "The function has a documented incident history (bug-2896) specifically related to incorrect handling of zero-length file-like objects and Content-Length headers.",
+          "The function is a core component called by src/requests/models.py::prepare, meaning any regression here will impact all HTTP requests made by the library."
+        ],
+        "suggested_checks": [
+          "Add unit tests specifically covering zero-length file-like objects to ensure they trigger chunked Transfer-Encoding correctly.",
+          "Verify the behavior of super_len(data) when data is an empty stream to ensure the logic correctly distinguishes between 'unknown length' and 'zero length'.",
+          "Perform integration testing on file uploads to ensure that the mutual exclusivity check between streamed bodies and files does not cause regressions in standard multipart uploads."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1024,
+        "output_tokens": 225,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 3,
+          "facts_referenced": 3,
+          "referenced": [
+            "bug-2896",
+            "no test coverage",
+            "src/requests/models.py::prepare"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 7328,
+      "label": "risky",
+      "label_basis": "fragile_area_no_incident_tag",
+      "retrieval_latency_s": 4.88,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 18.19,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/sessions.py::resolve_redirects"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": null,
+        "expected_incident_tag_found": null,
+        "functions_already_indexed": [
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          6,
+          0
+        ],
+        "functions_with_tests": [
+          true,
+          false
+        ]
+      },
+      "ollama": {
+        "latency_s": 13.31,
+        "risk_level": "low",
+        "reasons": [
+          "The function `resolve_redirects` is a high-level function that handles redirects in the requests library. It does not have any known callers or test coverage, and it does not have an incident history.",
+          "The function is semantically similar to other functions in the requests library, such as `send`, `__init__`, and `rebuild_proxies`. These functions are also high-level functions that handle different aspects of HTTP requests."
+        ],
+        "suggested_checks": [
+          "Review the code for any potential issues or bugs.",
+          "Add test coverage to the function to ensure it behaves as expected.",
+          "Check the incident history of the function to see if there have been any known issues or vulnerabilities."
+        ],
+        "predicted_label": "safe",
+        "prompt_tokens": 1804,
+        "output_tokens": 166,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 7,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      },
+      "gemini": {
+        "latency_s": 7.72,
+        "risk_level": "medium",
+        "reasons": [
+          "resolve_redirects is a core function with 6 known callers, including the primary send method, making it a high-traffic area for potential regressions.",
+          "The test_redirect_history_no_self_reference function has zero known callers and no test coverage, which is a risk signal for dead or untested code paths.",
+          "resolve_redirects handles complex logic involving RFC compliance (RFC 1808, RFC 7231, RFC 3986) and stateful cookie/header management, which are historically sensitive areas in HTTP client libraries."
+        ],
+        "suggested_checks": [
+          "Verify that the redirect history logic does not introduce memory leaks or circular references in the response history list.",
+          "Perform regression testing on cookie handling during redirects, specifically ensuring that sensitive headers are correctly purged as per the existing logic.",
+          "Ensure the new test case is integrated into the main test suite so it is no longer classified as having zero callers and no coverage."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 2150,
+        "output_tokens": 238,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 7,
+          "facts_referenced": 1,
+          "referenced": [
+            "no test coverage"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 7431,
+      "label": "safe",
+      "label_basis": "clean_history",
+      "retrieval_latency_s": 4.91,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 15.25,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/models.py::__init__",
+          "src/requests/sessions.py::request"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": null,
+        "expected_incident_tag_found": null,
+        "functions_already_indexed": [
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          4,
+          20
+        ],
+        "functions_with_tests": [
+          true,
+          true
+        ]
+      },
+      "ollama": {
+        "latency_s": 10.34,
+        "risk_level": "low",
+        "reasons": [
+          "The `__init__` method of `models.py` does not have any documented incident history or similar past changes.",
+          "It is called by multiple other functions (`adapters.py`, `exceptions.py`, `structures.py`, and `server.py`)."
+        ],
+        "suggested_checks": [
+          "Ensure that the `__init__` method has appropriate documentation explaining its purpose, parameters, and usage.",
+          "Verify that the `__init__` method is called by all expected functions."
+        ],
+        "predicted_label": "safe",
+        "prompt_tokens": 2034,
+        "output_tokens": 123,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 24,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      },
+      "gemini": {
+        "latency_s": 5.61,
+        "risk_level": "medium",
+        "reasons": [
+          "The function src/requests/sessions.py::request is a high-traffic entry point with 20 known callers, making any change to its request construction logic potentially impactful.",
+          "The modification to src/requests/models.py::__init__ alters how default parameters are initialized, which affects 4 internal callers and could introduce regressions in object state if not handled consistently across the library."
+        ],
+        "suggested_checks": [
+          "Verify that the new default initialization in Request.__init__ does not conflict with existing mutable default handling in the library.",
+          "Run the full test suite, specifically focusing on the 20 callers of Session.request to ensure that the updated Request object construction maintains backward compatibility.",
+          "Check for potential side effects in the hook registration loop within Request.__init__ to ensure it handles existing hook structures correctly."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 2267,
+        "output_tokens": 205,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 24,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      }
+    },
+    {
+      "pr_number": 7365,
+      "label": "safe",
+      "label_basis": "clean_history",
+      "retrieval_latency_s": 2.92,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 15.18,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/models.py::iter_content"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": null,
+        "expected_incident_tag_found": null,
+        "functions_already_indexed": [
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          7,
+          2
+        ],
+        "functions_with_tests": [
+          true,
+          true
+        ]
+      },
+      "ollama": {
+        "latency_s": 12.26,
+        "risk_level": "low",
+        "reasons": [
+          "The function `iter_content` is a utility method used to iterate over the response data in chunks. It is called by multiple other functions and has test coverage. There are no documented incident histories associated with this function.",
+          "The function `iter_lines` is another utility method used to iterate over the response data line by line. It is also called by multiple other functions and has test coverage. There are no documented incident histories associated with this function."
+        ],
+        "suggested_checks": [
+          "Ensure that the function `iter_content` and `iter_lines` are thoroughly tested to ensure they behave as expected.",
+          "Review the code for any potential issues or bugs that could lead to unexpected behavior."
+        ],
+        "predicted_label": "safe",
+        "prompt_tokens": 1425,
+        "output_tokens": 163,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 9,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      },
+      "gemini": {
+        "latency_s": 2.36,
+        "risk_level": "medium",
+        "reasons": [
+          "iter_content is a core method with 7 known callers, including critical internal methods like __iter__ and content, making any change to its logic high-impact.",
+          "iter_lines relies directly on iter_content; changes to the streaming logic in iter_content propagate to iter_lines, potentially affecting line-splitting behavior.",
+          "The logic involves complex state management (self._content_consumed) and exception wrapping for multiple network-related errors (ProtocolError, DecodeError, ReadTimeoutError, SSLError), which are common sources of regressions in HTTP clients."
+        ],
+        "suggested_checks": [
+          "Verify that the transition between reused_chunks and stream_chunks correctly handles cases where the response is partially consumed.",
+          "Ensure that the exception mapping for urllib3 errors remains consistent with existing error handling patterns to avoid breaking downstream error catching.",
+          "Perform regression testing on large response bodies to ensure that the chunking logic does not introduce memory leaks or incorrect line splitting in iter_lines."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1620,
+        "output_tokens": 238,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 9,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      }
+    },
+    {
+      "pr_number": 6716,
+      "label": "risky",
+      "label_basis": "incident_tag",
+      "retrieval_latency_s": 3.94,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 24.56,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/adapters.py::_urllib3_request_context",
+          "src/requests/adapters.py::build_connection_pool_key_attributes",
+          "src/requests/adapters.py::get_connection_with_tls_context"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": "CVE-2024-35195",
+        "expected_incident_tag_found": true,
+        "functions_already_indexed": [
+          true,
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          1,
+          1,
+          1
+        ],
+        "functions_with_tests": [
+          false,
+          false,
+          false
+        ]
+      },
+      "ollama": {
+        "latency_s": 20.62,
+        "risk_level": "high",
+        "reasons": [
+          "The function `_urllib3_request_context` is called by multiple other functions (`build_connection_pool_key_attributes`, `get_connection_with_tls_context`, and `send`) that are not explicitly tested. This makes it difficult to understand the impact of changes to this function on the overall system.",
+          "The function `build_connection_pool_key_attributes` does not have test coverage, which means we cannot verify whether its behavior is consistent across different scenarios or if there are any unintended side effects.",
+          "There is a documented incident history for CVE-2024-35195, indicating that the connection pool (and its verify=False setting) was cached at the session level on first use; a later request on the same session that explicitly passed verify=True could still silently reuse the unverified pool from the first request. This suggests that there is a potential security risk associated with this function."
+        ],
+        "suggested_checks": [
+          "Add unit tests for `_urllib3_request_context` to ensure its behavior is consistent across different scenarios.",
+          "Implement test coverage for `build_connection_pool_key_attributes` to verify its correctness.",
+          "Review the incident history for CVE-2024-35195 and consider whether there are any potential security risks associated with this function."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 2224,
+        "output_tokens": 283,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 7,
+          "facts_referenced": 1,
+          "referenced": [
+            "cve-2024-35195"
+          ]
+        }
+      },
+      "gemini": {
+        "latency_s": 3.38,
+        "risk_level": "high",
+        "reasons": [
+          "The function 'get_connection_with_tls_context' is directly implicated in CVE-2024-35195, which involved critical failures in connection pool caching and TLS verification settings.",
+          "All three changed functions (_urllib3_request_context, build_connection_pool_key_attributes, and get_connection_with_tls_context) currently lack test coverage, making it impossible to verify if the fix for the CVE is correctly implemented or if it introduces regressions.",
+          "The logic in '_urllib3_request_context' and 'build_connection_pool_key_attributes' directly determines the security parameters (SSL context, cert verification) for connection pooling, which is the exact area where the previous incident occurred."
+        ],
+        "suggested_checks": [
+          "Add regression tests specifically targeting the scenario described in CVE-2024-35195: verify that changing 'verify' settings between requests on the same session correctly invalidates or updates the connection pool.",
+          "Verify that 'build_connection_pool_key_attributes' correctly handles all combinations of 'verify' (bool vs string) and 'cert' (tuple vs string) to ensure the resulting pool key is unique enough to prevent cross-contamination of security settings.",
+          "Perform a manual audit of the 'poolmanager' state after calling '_urllib3_request_context' to ensure that 'ssl_context' and 'cert_reqs' are not being cached incorrectly across different request configurations."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 2529,
+        "output_tokens": 350,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 7,
+          "facts_referenced": 1,
+          "referenced": [
+            "cve-2024-35195"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 7426,
+      "label": "safe",
+      "label_basis": "clean_history",
+      "retrieval_latency_s": 2.44,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 12.72,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/utils.py::to_key_val_list"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": null,
+        "expected_incident_tag_found": null,
+        "functions_already_indexed": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          21,
+          0,
+          5,
+          5
+        ],
+        "functions_with_tests": [
+          true,
+          false,
+          true,
+          true
+        ]
+      },
+      "ollama": {
+        "latency_s": 10.28,
+        "risk_level": "low",
+        "reasons": [
+          "The function `to_key_val_list` is semantically similar to the existing code in tests/test_utils.py::test_invalid and tests/test_utils.py::test_valid. It does not introduce any new bugs or vulnerabilities.",
+          "The function has test coverage, so it is unlikely to introduce new bugs or vulnerabilities."
+        ],
+        "suggested_checks": [
+          "Ensure that the function `to_key_val_list` follows best practices for handling dictionary-like objects and edge cases.",
+          "Verify that the function does not introduce any unintended side effects or changes in behavior."
+        ],
+        "predicted_label": "safe",
+        "prompt_tokens": 1296,
+        "output_tokens": 134,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 32,
+          "facts_referenced": 2,
+          "referenced": [
+            "tests/test_utils.py::test_invalid",
+            "tests/test_utils.py::test_valid"
+          ]
+        }
+      },
+      "gemini": {
+        "latency_s": 2.17,
+        "risk_level": "medium",
+        "reasons": [
+          "The function 'src/requests/utils.py::dict_to_sequence' has zero known callers and no test coverage, which makes its impact and correctness difficult to verify.",
+          "The function 'src/requests/_types.py::items' is a high-traffic utility with 21 known callers across core modules like sessions.py and models.py, meaning any change here has a wide blast radius.",
+          "The function 'src/requests/utils.py::to_key_val_list' is used in critical request preparation logic (e.g., _encode_files, _encode_params), making it a sensitive point for data serialization bugs."
+        ],
+        "suggested_checks": [
+          "Add unit tests for 'src/requests/utils.py::dict_to_sequence' to ensure it handles various input types correctly.",
+          "Perform regression testing on 'src/requests/models.py' and 'src/requests/sessions.py' to ensure the changes to 'to_key_val_list' do not break parameter or file encoding.",
+          "Verify that the new type hints in 'items' and 'to_key_val_list' are compatible with all 21 identified callers to prevent runtime type errors."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1491,
+        "output_tokens": 295,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 32,
+          "facts_referenced": 3,
+          "referenced": [
+            "no test coverage",
+            "src/requests/utils.py::dict_to_sequence",
+            "src/requests/utils.py::to_key_val_list"
+          ]
+        }
+      }
+    },
+    {
+      "pr_number": 7309,
+      "label": "safe",
+      "label_basis": "clean_history",
+      "retrieval_latency_s": 2.97,
+      "retrieval_error": null,
+      "end_to_end_ollama_path_s": 11.19,
+      "retrieval": {
+        "expected_functions_found": [
+          "src/requests/utils.py::_parse_content_type_header"
+        ],
+        "expected_functions_missing": [],
+        "expected_incident_tag": null,
+        "expected_incident_tag_found": null,
+        "functions_already_indexed": [
+          true,
+          true
+        ],
+        "functions_with_callers": [
+          2,
+          0
+        ],
+        "functions_with_tests": [
+          true,
+          false
+        ]
+      },
+      "ollama": {
+        "latency_s": 8.22,
+        "risk_level": "low",
+        "reasons": [
+          "The function `_parse_content_type_header` is not called by any other functions in the project.",
+          "It does not have test coverage."
+        ],
+        "suggested_checks": [
+          "Add a test case for `_parse_content_type_header` to ensure it behaves as expected.",
+          "Review the code for any potential bugs or vulnerabilities that could be introduced by this change."
+        ],
+        "predicted_label": "safe",
+        "prompt_tokens": 1069,
+        "output_tokens": 97,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 3,
+          "facts_referenced": 0,
+          "referenced": []
+        }
+      },
+      "gemini": {
+        "latency_s": 1.67,
+        "risk_level": "medium",
+        "reasons": [
+          "The function _parse_content_type_header is a core utility used by get_encoding_from_headers, making it a potential vector for header parsing vulnerabilities.",
+          "The test function test_get_encoding_from_headers has zero known callers and no test coverage, which is a risk signal for ensuring the reliability of the header parsing logic.",
+          "The semantically similar code src/requests/adapters.py::get_connection_with_tls_context is associated with CVE-2024-35195, indicating that utility functions in this codebase have historically been susceptible to state-caching or parsing-related security issues."
+        ],
+        "suggested_checks": [
+          "Verify that _parse_content_type_header correctly handles malformed headers or unexpected input formats that could lead to header injection or parsing errors.",
+          "Add explicit test coverage for test_get_encoding_from_headers to ensure it is actually executed during the test suite run.",
+          "Perform fuzz testing on _parse_content_type_header with various edge-case Content-Type strings to ensure robustness."
+        ],
+        "predicted_label": "risky",
+        "prompt_tokens": 1231,
+        "output_tokens": 264,
+        "parse_ok": true,
+        "error": null,
+        "grounding": {
+          "candidate_facts": 3,
+          "facts_referenced": 1,
+          "referenced": [
+            "no test coverage"
+          ]
+        }
+      }
+    }
+  ],
+  "summary": {
+    "ollama": {
+      "tp": 6,
+      "fp": 0,
+      "fn": 2,
+      "tn": 4,
+      "precision": 1.0,
+      "recall": 0.75,
+      "scored": 12,
+      "failed": 0,
+      "latency_s": {
+        "min": 8.22,
+        "p50": 12.84,
+        "p90": 15.5,
+        "max": 20.62,
+        "mean": 13.12,
+        "n": 12
+      },
+      "avg_prompt_tokens": 1685.0,
+      "avg_output_tokens": 158.0
+    },
+    "gemini": {
+      "tp": 8,
+      "fp": 4,
+      "fn": 0,
+      "tn": 0,
+      "precision": 0.67,
+      "recall": 1.0,
+      "scored": 12,
+      "failed": 0,
+      "latency_s": {
+        "min": 1.67,
+        "p50": 2.33,
+        "p90": 3.38,
+        "max": 7.72,
+        "mean": 2.99,
+        "n": 12
+      },
+      "avg_prompt_tokens": 1957.0,
+      "avg_output_tokens": 274.0
+    },
+    "retrieval": {
+      "incident_tag_prs_checked": 7,
+      "incident_tag_found_count": 7,
+      "prs_with_missing_functions": 3
+    },
+    "end_to_end_latency_ollama_path_s": {
+      "min": 11.19,
+      "p50": 15.73,
+      "p90": 19.83,
+      "max": 27.2,
+      "mean": 17.21,
+      "n": 12
+    }
+  }
+}

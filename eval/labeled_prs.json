@@ -1,1 +1,201 @@
-[]
+[
+  {
+    "pr_number": 6965,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "57acb7c26d809cf864ec439b8bcd6364702022d5",
+    "title": "Only use hostname to do netrc lookup instead of netloc",
+    "html_url": "https://github.com/psf/requests/pull/6965",
+    "merged_at": "2025-06-04T15:39:25Z",
+    "changed_functions": [
+      "src/requests/utils.py::get_netrc_auth"
+    ],
+    "label": "risky",
+    "label_basis": "incident_tag",
+    "justification": "Fixes CVE-2024-47081. get_netrc_auth carries that incident tag in worker/retrieval/incident_tags.json (curated + verified in Phase 3/4). Ground truth: a PR touching this function should be flagged elevated regardless of whether this specific diff is the fix or a future regression -- that is the system's actual value proposition (flag historically fragile functions), matching the framing already used in Phase 4's exit-check positive case for this exact PR.",
+    "expected_incident_tag": "CVE-2024-47081"
+  },
+  {
+    "pr_number": 6028,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "38f3f8ecb93cadfac03a6b7b3173018ac829d0cf",
+    "title": "Fix auth parsing for proxies",
+    "html_url": "https://github.com/psf/requests/pull/6028",
+    "merged_at": "2022-01-04T16:04:25Z",
+    "changed_functions": [
+      "src/requests/utils.py::prepend_scheme_if_needed"
+    ],
+    "label": "risky",
+    "label_basis": "incident_tag",
+    "justification": "Fixes CVE-2023-32681 (proxy URL parsing silently dropped embedded basic-auth credentials). prepend_scheme_if_needed carries this incident tag in the curated set.",
+    "expected_incident_tag": "CVE-2023-32681",
+    "retrieval_caveat": "KNOWN RETRIEVAL LIMITATION (see PROBLEMS.md, Phase 6): this PR predates psf/requests' migration to a src/ layout, so GitHub's API returns this PR's file path without the src/ prefix (e.g. requests/utils.py), while the current index only has src/-prefixed paths. The diff parser correctly identifies the changed function by name (verified directly against the live diff) -- the exact-string file_path match in the DB lookup is what silently misses, so retrieval reports already_indexed=false / no incident tag for a function that IS actually indexed and tagged under its current path. Not a production-realistic failure (a live incoming PR always uses the current layout, matching the index) -- included in the eval anyway because these are the real, well-known historical incident PRs, and this is an honest, real limitation of the exact-path-match lookup key worth surfacing regardless."
+  },
+  {
+    "pr_number": 7427,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "52220f66843d08217b89204b7f85183fdf7514d9",
+    "title": "Port bpo-39057 to Requests",
+    "html_url": "https://github.com/psf/requests/pull/7427",
+    "merged_at": "2026-05-11T19:24:21Z",
+    "changed_functions": [
+      "src/requests/utils.py::should_bypass_proxies"
+    ],
+    "label": "risky",
+    "label_basis": "incident_tag",
+    "justification": "Ports a CPython urllib fix for naive endswith() no_proxy domain matching (e.g. \"newdomain.com\" incorrectly matching \"evilnewdomain.com\"). should_bypass_proxies carries this incident tag.",
+    "expected_incident_tag": "bpo-39057"
+  },
+  {
+    "pr_number": 4718,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "857e9b7ac20c3accf4cc328f594aecb8b6a644a6",
+    "title": "Strip Authorization header whenever root URL changes",
+    "html_url": "https://github.com/psf/requests/pull/4718",
+    "merged_at": "2018-09-14T12:08:05Z",
+    "changed_functions": [
+      "src/requests/sessions.py::rebuild_auth",
+      "src/requests/sessions.py::should_strip_auth"
+    ],
+    "label": "risky",
+    "label_basis": "incident_tag",
+    "justification": "The actual CVE-2018-18074 fix -- introduces should_strip_auth and fixes rebuild_auth. Both functions carry this incident tag. Two tagged functions changed in one PR, a good stress case for whether retrieval surfaces both, not just one.",
+    "expected_incident_tag": "CVE-2018-18074",
+    "retrieval_caveat": "KNOWN RETRIEVAL LIMITATION (see PROBLEMS.md, Phase 6): this PR predates psf/requests' migration to a src/ layout, so GitHub's API returns this PR's file path without the src/ prefix (e.g. requests/utils.py), while the current index only has src/-prefixed paths. The diff parser correctly identifies the changed function by name (verified directly against the live diff) -- the exact-string file_path match in the DB lookup is what silently misses, so retrieval reports already_indexed=false / no incident tag for a function that IS actually indexed and tagged under its current path. Not a production-realistic failure (a live incoming PR always uses the current layout, matching the index) -- included in the eval anyway because these are the real, well-known historical incident PRs, and this is an honest, real limitation of the exact-path-match lookup key worth surfacing regardless."
+  },
+  {
+    "pr_number": 6710,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "92075b330a30b9883f466a43d3f7566ab849f91b",
+    "title": "Move _get_connection to get_connection_with_tls_context",
+    "html_url": "https://github.com/psf/requests/pull/6710",
+    "merged_at": "2024-05-21T16:41:18Z",
+    "changed_functions": [
+      "src/requests/adapters.py::get_connection_with_tls_context"
+    ],
+    "label": "risky",
+    "label_basis": "incident_tag",
+    "justification": "Fixes CVE-2024-35195 (verify=False cached at session level could leak to a later verify=True request on the same session). get_connection_with_tls_context carries this incident tag.",
+    "expected_incident_tag": "CVE-2024-35195"
+  },
+  {
+    "pr_number": 2896,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "4c82dbab6fc3ad4b66babb1b01d21a26db602579",
+    "title": "Set 'Transfer-Encoding: chunked' if data is a file with length 0",
+    "html_url": "https://github.com/psf/requests/pull/2896",
+    "merged_at": "2015-12-02T14:35:41Z",
+    "changed_functions": [
+      "src/requests/models.py::prepare_body"
+    ],
+    "label": "risky",
+    "label_basis": "incident_tag",
+    "justification": "Fixes a falsy-vs-None bug (length 0 treated as \"unknown\" instead of \"known-zero\", producing a wrong Content-Length). prepare_body carries this incident tag; oldest PR in the set, good test of whether GitHub API / retrieval still resolve historical SHAs correctly.",
+    "expected_incident_tag": "bug-2896",
+    "retrieval_caveat": "KNOWN RETRIEVAL LIMITATION (see PROBLEMS.md, Phase 6): this PR predates psf/requests' migration to a src/ layout, so GitHub's API returns this PR's file path without the src/ prefix (e.g. requests/utils.py), while the current index only has src/-prefixed paths. The diff parser correctly identifies the changed function by name (verified directly against the live diff) -- the exact-string file_path match in the DB lookup is what silently misses, so retrieval reports already_indexed=false / no incident tag for a function that IS actually indexed and tagged under its current path. Not a production-realistic failure (a live incoming PR always uses the current layout, matching the index) -- included in the eval anyway because these are the real, well-known historical incident PRs, and this is an honest, real limitation of the exact-path-match lookup key worth surfacing regardless."
+  },
+  {
+    "pr_number": 7328,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "3ee28b806f8bc414b29f7b4561e53c161924fe66",
+    "title": "Prevent Response self-reference in redirect history",
+    "html_url": "https://github.com/psf/requests/pull/7328",
+    "merged_at": "2026-04-05T15:31:02Z",
+    "changed_functions": [
+      "src/requests/sessions.py::resolve_redirects"
+    ],
+    "label": "risky",
+    "label_basis": "fragile_area_no_incident_tag",
+    "justification": "resolve_redirects is NOT in the curated incident set -- deliberately included to test whether the system over- or under-flags based on the incident tag alone. Ground truth 'risky' here is my own judgment call, not a system output: redirect handling in this same file (sessions.py) has caused two real CVEs (rebuild_auth/should_strip_auth, CVE-2018-18074), so a change to resolve_redirects itself touches structurally fragile territory per SPEC section 8's 'touched something fragile' clause, independent of whether this specific diff is a good fix. This is the honest edge case: retrieval's real callers/no-incident-tag result should be correct (it won't find a tag), so the real test is whether the LLM's own judgment (not just tag-matching) still flags elevated risk for redirect-handling code.",
+    "expected_incident_tag": null
+  },
+  {
+    "pr_number": 7431,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "0a074cadfaccfbdd2f841d567a4c1a9132a72cd4",
+    "title": "Fix mutability issues with headers input types",
+    "html_url": "https://github.com/psf/requests/pull/7431",
+    "merged_at": "2026-05-13T19:16:50Z",
+    "changed_functions": [
+      "src/requests/models.py::__init__",
+      "src/requests/sessions.py::request"
+    ],
+    "label": "safe",
+    "label_basis": "clean_history",
+    "justification": "Reused from Phase 4's own negative-case exit check: retrieval already independently verified to correctly return empty incident_tags for both functions while still surfacing real, correct callers (sessions.request's callers include every real HTTP-verb convenience method). Typing/mutability cleanup, no security or redirect/auth surface touched.",
+    "expected_incident_tag": null
+  },
+  {
+    "pr_number": 7365,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "a5e64000f489b059a5aca9463afd9f39b1c5b273",
+    "title": "Clarify decode_unicode behaviour in iter_{content,lines} docstrings",
+    "html_url": "https://github.com/psf/requests/pull/7365",
+    "merged_at": "2026-04-15T15:06:46Z",
+    "changed_functions": [
+      "src/requests/models.py::iter_content"
+    ],
+    "label": "safe",
+    "label_basis": "clean_history",
+    "justification": "Docstring-only clarification (+7/-2, 1 file), no behavior change. iter_content has real test coverage and 7 real callers per the index. Deliberately trivial -- tests the false-positive rate on a change that touches a function with plenty of callers but zero actual logic risk.",
+    "expected_incident_tag": null
+  },
+  {
+    "pr_number": 6716,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "b1d73ddb509a3a2d3e10744e85f9cdebdbde90f0",
+    "title": "Allow for overriding of specific pool key params",
+    "html_url": "https://github.com/psf/requests/pull/6716",
+    "merged_at": "2024-05-24T21:37:06Z",
+    "changed_functions": [
+      "src/requests/adapters.py::_urllib3_request_context",
+      "src/requests/adapters.py::build_connection_pool_key_attributes",
+      "src/requests/adapters.py::get_connection_with_tls_context"
+    ],
+    "label": "risky",
+    "label_basis": "incident_tag",
+    "justification": "CORRECTED after investigation (see PROBLEMS.md): originally labeled safe based on a function name (build_response) that does not actually appear in this PR's real diff -- my research script matched on unchanged context text in the patch, not an actual changed line. The real diff (verified by running the diff parser directly against the live PR) touches _urllib3_request_context, build_connection_pool_key_attributes, and get_connection_with_tls_context in adapters.py. The third of these IS the exact CVE-2024-35195-tagged function from PR #6710, merged just 3 days earlier -- this PR is a direct follow-up modification to a function fixed for a CVE days before, which is squarely \"touched something fragile\" (SPEC section 8) regardless of this PR's own stated feature-addition intent. Relabeled risky/incident_tag; retrieval should surface the real CVE-2024-35195 tag.",
+    "expected_incident_tag": "CVE-2024-35195"
+  },
+  {
+    "pr_number": 7426,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "93417da60458511850815cc540e9c1f773bd1c9c",
+    "title": "Parameterize SupportsItems to handle Mapping key invariance",
+    "html_url": "https://github.com/psf/requests/pull/7426",
+    "merged_at": "2026-05-11T17:33:18Z",
+    "changed_functions": [
+      "src/requests/utils.py::to_key_val_list"
+    ],
+    "label": "safe",
+    "label_basis": "clean_history",
+    "justification": "Typing-only change to a generic-typed helper, no runtime behavior change. has_tests=true, 5 real callers per the index.",
+    "expected_incident_tag": null
+  },
+  {
+    "pr_number": 7309,
+    "owner": "psf",
+    "repo": "requests",
+    "head_sha": "87d4138a89bf704eb373c7c716688ff62ea8caf0",
+    "title": "Fix malformed value parsing for Content-Type",
+    "html_url": "https://github.com/psf/requests/pull/7309",
+    "merged_at": "2026-03-30T15:27:35Z",
+    "changed_functions": [
+      "src/requests/utils.py::_parse_content_type_header"
+    ],
+    "label": "safe",
+    "label_basis": "clean_history",
+    "justification": "CORRECTED after investigation (see PROBLEMS.md): originally labeled with function name get_encodings_from_content, which appears in this PR's patch only as unchanged context text, not an actual changed line -- same research-script flaw as PR #6716. The real diff (verified directly) touches _parse_content_type_header instead. Label stays safe: still an isolated, low-fanout parsing helper (2 callers, has_tests=true, no incident tag), same reasoning as before, just against the function actually changed.",
+    "expected_incident_tag": null
+  }
+]
