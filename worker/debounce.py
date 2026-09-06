@@ -13,6 +13,8 @@ the debounce logic itself, not the full pipeline.
 """
 import json
 import logging
+import os
+import socket
 import time
 
 import redis
@@ -24,7 +26,21 @@ logger = logging.getLogger(__name__)
 
 STREAM_NAME = "pr_events"
 GROUP_NAME = "pr_workers"
-CONSUMER_NAME = "worker-1"
+CONSUMER_NAME = "worker-1"  # single-worker/test default — see consumer_name() for run_forever's per-process identity
+
+
+def consumer_name() -> str:
+    """A consumer identity unique per running worker process.
+
+    Redis Streams consumer groups track pending-entries-list ownership per
+    consumer *name*, not per connection — two real processes both reading as
+    "worker-1" would be indistinguishable for XPENDING/XCLAIM crash recovery,
+    which silently breaks horizontal scaling (see interview-prep/07). Honors
+    WORKER_CONSUMER_NAME for deployments that want an explicit, stable name
+    (e.g. a Kubernetes pod name); otherwise derives one from hostname+PID so
+    it's unique without any config.
+    """
+    return os.environ.get("WORKER_CONSUMER_NAME") or f"{socket.gethostname()}-{os.getpid()}"
 
 
 def ensure_group(r: redis.Redis, stream: str = STREAM_NAME, group: str = GROUP_NAME) -> None:
@@ -98,6 +114,8 @@ def _review_job(job: dict, settings) -> None:
 
 def run_forever() -> None:
     settings = get_settings()
+    consumer = consumer_name()
+    logger.info("Starting worker with consumer name %r", consumer)
     r = redis.Redis.from_url(settings.redis_url, decode_responses=True)
     ensure_group(r, stream=settings.stream_name)
     while True:
@@ -105,6 +123,7 @@ def run_forever() -> None:
             r,
             settings.debounce_window_seconds,
             stream=settings.stream_name,
+            consumer=consumer,
             on_processed=lambda job: _review_job(job, settings),
         )
 

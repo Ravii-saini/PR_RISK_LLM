@@ -4,9 +4,22 @@ Uses a short debounce window (0.3s, set in conftest) instead of production's
 20s so this runs fast without changing the logic under test.
 """
 import json
+import os
 
 from tests.helpers import make_payload, webhook_headers
-from worker.debounce import process_next_job
+from worker.debounce import consumer_name, process_next_job
+
+
+def test_consumer_name_honors_env_override(monkeypatch):
+    monkeypatch.setenv("WORKER_CONSUMER_NAME", "pod-abc123")
+    assert consumer_name() == "pod-abc123"
+
+
+def test_consumer_name_auto_generated_is_unique_per_pid(monkeypatch):
+    monkeypatch.delenv("WORKER_CONSUMER_NAME", raising=False)
+    name = consumer_name()
+    assert name != "worker-1"  # must not collide with the single-worker/test default
+    assert str(os.getpid()) in name
 
 
 def test_single_event_processed_after_debounce_window(client, settings, redis_client):
