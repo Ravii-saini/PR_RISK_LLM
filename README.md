@@ -186,7 +186,7 @@ instructions. Logged in full in PROBLEMS.md.
 
 ## Definition of Done
 
-Six things this project isn't "done" without being able to show — walked
+Seven things this project isn't "done" without being able to show — walked
 through against real evidence, not just described:
 
 1. **A real PR comment referencing specific retrieved context.** Four
@@ -231,6 +231,16 @@ through against real evidence, not just described:
    install at all. Demonstrated exactly that split: the 12-PR eval never
    touched `psf/requests` beyond reading it; the live demo posted 3 real
    comments here.
+7. **Concurrent-worker safety, not just concurrent-PR safety.** Item 3
+   above covers two PRs hitting one worker; a separate question is whether
+   the worker itself can safely run as more than one process. It couldn't:
+   `worker/debounce.py` hardcoded a single Redis Streams consumer identity
+   (`worker-1`), so two real worker processes would have silently shared
+   it, breaking the crash-recovery guarantee (`XCLAIM`/`XPENDING`) consumer
+   groups depend on — found while writing up how this project would scale,
+   not by accident. Fixed with a per-process `consumer_name()` (an env
+   override, else `hostname-PID`), verified by
+   `tests/test_debounce.py::test_consumer_name_auto_generated_is_unique_per_pid`.
 
 ## Notable problems & what I'd do differently
 
