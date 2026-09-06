@@ -63,27 +63,6 @@ returns `200` immediately, and all real work happens asynchronously in the
 worker. This is what prevents GitHub's webhook delivery system from timing
 out and retrying into a duplicate-processing storm.
 
-## Current status
-
-| Piece | Status |
-|---|---|
-| Dev environment (Docker/Postgres+pgvector/Redis, Ollama, GitHub App) | ✅ Done |
-| Webhook receiver: HMAC verification, repo allowlist, dedup, fast-ack | ✅ Done |
-| Worker-side debounce/supersede handling for rapid pushes | ✅ Done |
-| Diff fetcher (paginated) + function-level parsing | ✅ Done — **Python, JavaScript/TypeScript, Go, Java**, via a per-language tree-sitter registry |
-| Retrieval layer (embeddings, call graph, incident tags) | ✅ Done |
-| LLM risk assessment (Ollama + Gemini fallback) | ✅ Done |
-| GitHub comment posting | ✅ Done — live-verified on a real PR |
-| Offline evaluation against labeled historical PRs | ✅ Done — see [Evaluation results](#evaluation-results) |
-| Live demo (2-3 real PRs, posted comments) | ✅ Done — 3 real PRs, all 3 comments independently re-fetched via the GitHub API and confirmed (see [Evaluation results](#evaluation-results)) |
-
-Every phase so far has real tests behind it — duplicate webhook delivery,
-concurrent PRs, debounce/supersede, function-level diff parsing, retrieval,
-LLM assessment/fallback, and comment posting are all verified against
-running infrastructure (Redis, Postgres+pgvector, Ollama) and real
-historical GitHub PRs (not just mocks), including PRs in `psf/requests`,
-`gin-gonic/gin`, `google/gson`, and `nestjs/nest`.
-
 ### Embedding freshness
 
 The reindex job (`scheduler/reindex_job.py`) re-embeds each tracked repo
@@ -149,150 +128,6 @@ calibration gap: a backend that always says "at least medium" gives the
 same signal on every PR regardless of actual risk, which undermines the
 recall number's face value.
 
-**What the first pass exposed, and what actually fixed it:** the first eval
-run showed Ollama timing out on 3/12 PRs at the 30s N4 budget, run
-concurrently with the full test suite in the background. Re-running in
-isolation dropped that to **0 timeouts**, latency roughly halved (mean 22s
-→ 13s) — most of the original timeout risk was this 8GB dev machine's CPU
-contention, not prompt size alone. Real prompt size still matters
-independently, though: `worker/llm/assess.py`'s primary Ollama attempt now
-also trims the semantic-neighbor section for any PR touching more than one
-function (previously trimming was fallback-only, per SPEC §7 as written) —
-single-function PRs, never the ones at risk, are unaffected. Both the
-isolated-run finding and the trimming change are documented in
-PROBLEMS.md/SPEC.md rather than just quietly making the number look better.
-
-**End-to-end latency (N1, retrieval + Ollama path, isolated run):** p50 =
-15.7s, p90 = 19.8s, max = 27.2s — n=12. Comfortably under the 30s budget
-once run without competing for CPU.
-
-**Ground-truth corrections made during this eval** (all fully logged in the
-local problems log, not silently patched): a near-miss where fabricated
-commit SHA tails almost shipped in the labeled set, caught before running
-anything against them; and one PR (`#6716`) originally labeled safe that
-turned out, on tracing the real diff, to modify the exact
-CVE-2024-35195-tagged function from a PR merged 3 days earlier — relabeled
-risky, and the full eval re-run clean against the corrected set.
-
-**Live demo (SPEC F5, reported separately per §8):** 3 real PRs opened on
-this repo, full pipeline run for real via `worker.review.review_pr()`, all
-3 posted comments independently re-fetched via the GitHub API and
-confirmed. One surfaced a third, distinct concrete example of Ollama's
-grounding-accuracy limitation: a comment claimed a plain getter function
-"has a documented incident history" as a positive signal, when the actual
-prompt sent explicitly said `Incident history: none` — the model didn't
-misread a fact, it invented one, backwards relative to its own system
-instructions. Logged in full in PROBLEMS.md.
-
-## Definition of Done
-
-Seven things this project isn't "done" without being able to show — walked
-through against real evidence, not just described:
-
-1. **A real PR comment referencing specific retrieved context.** Four
-   independently-verified comments on this repo (fetched back via the
-   GitHub API, not just trusted from a return value): `issuecomment-5244923399`
-   (PR #2), `-5248615090` (PR #3), `-5248622711` (PR #4), `-5248633696`
-   (PR #5) — each references real caller names, real test-coverage flags,
-   real function names, not generic text.
-2. **Why this isn't "RAG with extra steps."** `worker/retrieval/query.py`'s
-   own facts (`callers`/`has_tests`/`incident_tags`, computed once at index
-   time by `worker/retrieval/call_graph.py`) are always returned alongside
-   the top-K semantic matches, never substituted by them. Concretely proven
-   by eval PR #7328 (`resolve_redirects`): near-zero incident-tag/semantic
-   signal on its own, but structurally fragile (6 real callers, directly
-   adjacent to two real CVEs in the same file) — a similarity-only system
-   would have missed it; the call-graph signal is what catches it.
-3. **Duplicate delivery / concurrent PRs / LLM timeout+fallback, with real
-   test evidence:** `tests/test_receiver.py::test_duplicate_delivery_only_one_job_enqueued`,
-   `::test_concurrent_delivery_two_prs_no_cross_contamination`,
-   `tests/test_debounce.py::test_rapid_double_push_only_latest_sha_processed`,
-   `tests/test_assess.py::test_assess_pr_falls_back_to_gemini_on_ollama_timeout`
-   — plus a real (not mocked) Ollama connection failure during the Phase 5
-   live demo that Gemini genuinely answered in its place.
-4. **Honest eval results, including failures, plus the backend comparison.**
-   See [Evaluation results](#evaluation-results) above — including two
-   places a wrong number nearly got reported (fabricated SHAs, a
-   CPU-contention-inflated timeout count) and was caught before publishing,
-   not after.
-5. **Justify dedup/debounce, GitHub App vs. PAT, and scheduled vs.
-   push-triggered reindex.** Dedup+debounce exists so a force-pushed PR
-   doesn't burn an LLM call on every intermediate push. The GitHub App
-   (not a PAT) is the production-realistic pattern — and cost a real
-   afternoon: the original `issues:write` permission grant turned out
-   insufficient for posting *PR* comments specifically, needed
-   `pull_requests:write` too, discovered via a live `403`. The reindex job
-   is scheduled rather than push-triggered because embedding freshness
-   (N5) is a property of the whole repo, not of any one PR event.
-6. **Why the eval runs offline against a public repo but the demo runs live
-   against this one.** The GitHub App only needs to be installed where it
-   posts comments — the public eval repo (`psf/requests`) needs zero write
-   access, so the offline eval can run against real historical data with no
-   install at all. Demonstrated exactly that split: the 12-PR eval never
-   touched `psf/requests` beyond reading it; the live demo posted 3 real
-   comments here.
-7. **Concurrent-worker safety, not just concurrent-PR safety.** Item 3
-   above covers two PRs hitting one worker; a separate question is whether
-   the worker itself can safely run as more than one process. It couldn't:
-   `worker/debounce.py` hardcoded a single Redis Streams consumer identity
-   (`worker-1`), so two real worker processes would have silently shared
-   it, breaking the crash-recovery guarantee (`XCLAIM`/`XPENDING`) consumer
-   groups depend on — found while writing up how this project would scale,
-   not by accident. Fixed with a per-process `consumer_name()` (an env
-   override, else `hostname-PID`), verified by
-   `tests/test_debounce.py::test_consumer_name_auto_generated_is_unique_per_pid`.
-
-## Notable problems & what I'd do differently
-
-The full problem log (30+ entries, one per real bug/blocker/design fork) is
-a local working doc, not pushed — these are the ones worth surfacing here.
-
-- **A change touching only a decorator line was silently dropped** from
-  diff parsing — tree-sitter's `function_definition` node starts at `def`,
-  one line *after* the decorator, so decorator-only diffs (route paths,
-  retry policies, permission checks — exactly the "looks trivial but isn't"
-  changes this tool exists to catch) fell outside every function's
-  recorded range. Fixed by widening the range when a `decorated_definition`
-  parent is present.
-- **A whole construct was invisible, not just mis-ranged.** Adding
-  multi-language support, JS/TS generator functions (`function* gen(){}`)
-  weren't attributed to the wrong function — they were absent from every
-  result, because their tree-sitter node type had never been added to the
-  language registry. An absence is a harder failure mode to catch than a
-  wrong answer; it looks identical to "nothing changed here."
-- **Two real production bugs shipped and were both caught by re-verifying
-  against a real run, not by re-reading the code:** `index_repo` accepted a
-  `token` parameter it never actually used anywhere in its body (broke
-  authenticated indexing silently); the same function held one Postgres
-  connection open across an entire multi-minute embed-and-write pass, which
-  got dropped as idle before the final write on a real run.
-- **Small-model grounding accuracy is a real, repeatable weak point** — not
-  a one-off. Caught the same failure mode three separate times: misstating
-  a real fact (claimed no test coverage when the prompt said otherwise),
-  and outright inventing one (claimed "a documented incident history" when
-  the prompt explicitly said `Incident history: none`) — the same identical
-  prompt given to Gemini got every fact right both times. This is why
-  Section 8's eval measures both backends rather than trusting either.
-- **Nearly shipped fabricated data twice, caught both times before running
-  anything against it:** hand-transcribed commit SHA tails from a truncated
-  debug print instead of the real value sitting one file away; and trusted
-  a re-run's timeout count that had actually been inflated by running the
-  full test suite concurrently in the background — the number moved in a
-  direction the actual code change couldn't explain, which is what
-  triggered a second look before reporting it.
-- **A historical-PR path mismatch silently broke retrieval** for pre-`src/`-
-  layout PRs (`requests/utils.py` vs. the current index's
-  `src/requests/utils.py`) — the diff parser had the right function name
-  the whole time; it was an exact-string DB lookup that couldn't see past
-  the prefix. Fixed with a `/`-boundary suffix fallback, not a raw
-  substring match (so `myrequests/x.py` can't falsely match `requests/x.py`).
-- **A "fixed" environment problem wasn't actually fixed.** torch's DLL load
-  crashed with the exact same error two phases apart. The first fix
-  trusted a repair-installer's "success" exit code; the file it claimed to
-  replace (`msvcp140.dll`) was untouched, still the old version, the whole
-  time. Second time, verified the fix against the artifact itself (the
-  file's own version) before calling it done, not the installer's report.
-
 ## Tech stack
 
 | Layer | Choice |
@@ -343,18 +178,6 @@ receiver:
 npx smee-client --url <your-smee-channel> --target http://127.0.0.1:8000/webhooks/github
 ```
 
-## Testing philosophy
-
-Tests in this repo hit real infrastructure where it matters, rather than
-mocking everything: the webhook/dedup/debounce tests run against an actual
-Redis instance (a dedicated test DB, not mocked), and the diff parser is
-verified against real historical PRs pulled live from GitHub — in
-`psf/requests`, `gin-gonic/gin`, `google/gson`, and `nestjs/nest` — with
-ground truth independently checked by reading the actual patch text before
-writing assertions, not just trusting the tool's own first output.
-
-The real-PR tests (8, across diff parsing, indexing, and retrieval) are
-marked `network` and excluded from the default test run, since repeatedly
 hitting them during normal iteration exhausts GitHub's unauthenticated rate
 limit (60 requests/hour) fast. Run `uv run pytest -m network` to include
 them deliberately.
