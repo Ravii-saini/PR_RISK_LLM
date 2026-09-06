@@ -6,12 +6,11 @@ obviously fragile from the diff alone." It grounds an LLM's assessment in
 real codebase context (call graphs, test coverage, past incident patterns)
 instead of asking a model to review a diff in isolation with no context.
 
-**Status: feature-complete, pending final technical review.** This was built
-incrementally and documented honestly as it went — see [Current
-status](#current-status) below for what's actually working today. The full
-pipeline (webhook → retrieval → grounded LLM assessment → posted comment) is
-real and live-verified end to end; both the offline evaluation and the live
-demo (below) are done.
+**Status: done.** This was built incrementally and documented honestly as it
+went — see [Current status](#current-status) below for what's actually
+working today. The full pipeline (webhook → retrieval → grounded LLM
+assessment → posted comment) is real and live-verified end to end; both the
+offline evaluation and the live demo (below) are done.
 
 ## Why this exists
 
